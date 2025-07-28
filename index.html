@@ -95,7 +95,7 @@
         body.shiba-spin #ground, body.shiba-spin #clouds {
             animation-duration: 2s !important; /* Faster ground/clouds */
         }
-        body.shiba-spin .obstacle, body.shiba-spin .power-up {
+        body.shiba-spin .obstacle, body.shiba-spin .power-up, body.shiba-spin .toy-item {
             animation-duration: 1.5s !important; /* Faster obstacles */
         }
 
@@ -137,7 +137,7 @@
             animation: particle-poof 0.8s ease-out forwards;
         }
 
-        .obstacle, .power-up {
+        .obstacle, .power-up, .toy-item {
             width: var(--obstacle-size);
             height: var(--obstacle-size);
             background-size: contain;
@@ -146,16 +146,32 @@
             font-size: var(--obstacle-size);
             line-height: 1;
             z-index: 10;
-            animation: moveObstacle 3.5s linear;
+            animation: moveItem 3.5s linear;
         }
         
-        .obstacle.ground-type {
+        .obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type {
             bottom: var(--ground-height); 
         }
 
-        .obstacle.flying-type {
+        .obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type {
             bottom: calc(var(--ground-height) + 100px); 
             font-size: 60px; 
+        }
+
+        /* Toy specific styles */
+        .toy-item {
+            animation: moveItem 3.5s linear, wiggleToy 1s ease-in-out infinite; 
+        }
+        .toy-item.toy1 { background-image: url('toy1.png'); }
+        .toy-item.toy2 { background-image: url('toy2.png'); }
+        .toy-item.toy3 { background-image: url('toy3.png'); }
+
+        @keyframes wiggleToy {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(3deg); }
+            100% { transform: rotate(0deg); }
         }
 
         /* Score & High Score positions */
@@ -437,7 +453,7 @@
 
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        @keyframes moveObstacle { from { left: 100%; } to { left: -100px; } }
+        @keyframes moveItem { from { left: 100%; } to { left: -100px; } } /* Renamed to moveItem for all collectibles */
         @keyframes flash { 50% { opacity: 0.3; } }
         @keyframes particle-poof {
             0% { transform: scale(1) translateY(0); opacity: 1; }
@@ -597,8 +613,8 @@
             groundHeight: 0, 
             flyingObstacleThreshold: 20,
             currentBiomeIndex: 0, 
-            lastBiomeChangeScore: 0, // Changed to track last score at which biome changed
-            biomeChangeInterval: 5, // Biome changes every 5 points
+            lastBiomeChangeScore: 0, 
+            biomeChangeInterval: 5, 
             shibaSpinActive: false,
             shibaSpinTimeout: null,
             shibaSpinInterval: null, 
@@ -646,6 +662,8 @@
                 flying: ['🌧️', '⚡', '🦅'] 
             }
         };
+
+        const TOY_IMAGES = ['toy1.png', 'toy2.png', 'toy3.png'];
 
         const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; 
 
@@ -825,10 +843,10 @@
                 elements.shibaContainer.style.bottom = `${state.shibaY}px`;
             }
 
-            document.querySelectorAll('.obstacle.ground-type, .power-up').forEach(el => {
+            document.querySelectorAll('.obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type').forEach(el => {
                 el.style.bottom = `${state.groundHeight}px`;
             });
-            document.querySelectorAll('.obstacle.flying-type').forEach(el => {
+            document.querySelectorAll('.obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type').forEach(el => {
                 el.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
             });
         }
@@ -880,7 +898,7 @@
         function startGame() {
             state.isGameOver = false;
             state.score = 0;
-            state.lastBiomeChangeScore = 0; // Reset this at game start
+            state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = state.score; 
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
@@ -906,7 +924,7 @@
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
             
-            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble, .raindrop').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
@@ -960,24 +978,34 @@
 
             const randomChance = Math.random();
             const isChickenPowerUp = randomChance < 0.05; 
+            const isToyItem = !isChickenPowerUp && randomChance < 0.15; // 10% chance for a toy (0.15 - 0.05)
+
+            let isFlying = Math.random() < 0.5; 
+            if (state.score < state.flyingObstacleThreshold) {
+                isFlying = false; // Force ground items until threshold
+            }
 
             if (isChickenPowerUp) {
-                item.classList.add('power-up', 'invincibility');
+                item.classList.add('power-up');
                 item.textContent = EMOJIS.invincibilityPowerUp;
-                item.style.bottom = `${state.groundHeight + 50}px`; 
+                if (isFlying) item.classList.add('flying-type');
+                else item.classList.add('ground-type');
+            } else if (isToyItem) {
+                item.classList.add('toy-item');
+                const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
+                item.classList.add(randomToy.replace('.png', '')); // Add class like 'toy1'
+                item.style.backgroundImage = `url('${randomToy}')`;
+                if (isFlying) item.classList.add('flying-type');
+                else item.classList.add('ground-type');
             }
             else {
-                const canSpawnFlying = state.score >= state.flyingObstacleThreshold;
-                const isFlyingObstacle = canSpawnFlying && Math.random() < 0.5; 
-
-                if (isFlyingObstacle) {
-                    item.classList.add('obstacle', 'flying-type');
+                item.classList.add('obstacle');
+                if (isFlying) {
+                    item.classList.add('flying-type');
                     item.textContent = currentBiome.flyingObstacles[Math.floor(Math.random() * currentBiome.flyingObstacles.length)];
-                    item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
                 } else {
-                    item.classList.add('obstacle', 'ground-type');
+                    item.classList.add('ground-type');
                     item.textContent = currentBiome.groundObstacles[Math.floor(Math.random() * currentBiome.groundObstacles.length)];
-                    item.style.bottom = `${state.groundHeight}px`; 
                 }
             }
             
@@ -991,27 +1019,37 @@
             }
             item.style.animationDuration = `${animationSpeed}s`;
 
-            const obstaclePassTimer = setTimeout(() => {
+            if (item.classList.contains('flying-type')) {
+                item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
+                if (item.classList.contains('toy-item')) item.style.fontSize = `var(--obstacle-size)`; // Ensure toy images use size variable
+            } else {
+                item.style.bottom = `${state.groundHeight}px`; 
+            }
+
+
+            const itemPassTimer = setTimeout(() => {
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
                     if (item.classList.contains('obstacle')) { 
-                        updateScore(); 
-                        addXP(10); 
+                        updateScore(1, 10); // Normal obstacle: 1 score, 10 XP
                     }
                     item.remove();
                 }
             }, animationSpeed * 1000);
 
-            item.dataset.obstaclePassTimer = obstaclePassTimer;
+            item.dataset.itemPassTimer = itemPassTimer;
         }
 
-        function updateScore() {
-            state.score++;
+        function updateScore(scoreAmount = 1, xpAmount = 0) {
+            state.score += scoreAmount;
             elements.scoreNumber.textContent = state.score;
             applyScoreEffect();
             checkConfetti();
             checkBiomeChange(); 
             checkGameSpeed(); 
             checkShibaSpin(); 
+            if (xpAmount > 0) {
+                addXP(xpAmount);
+            }
         }
 
         function checkGameSpeed() {
@@ -1040,9 +1078,8 @@
         }
 
         function checkBiomeChange() {
-            // Biome change every 5 points, and ensure it's not the same score multiple times
             if (state.score > 0 && (state.score % state.biomeChangeInterval === 0) && (state.score !== state.lastBiomeChangeScore)) { 
-                state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % BIOMES.length; // Use BIOMES.length to cycle through all
+                state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % BIOMES.length; 
                 setBiome(state.biomeOrder[state.biomeCurrentIndexInOrder]);
                 state.lastBiomeChangeScore = state.score;
             }
@@ -1135,7 +1172,7 @@
 
         function checkCollisions() {
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
-            document.querySelectorAll('.obstacle, .power-up').forEach(item => {
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
                 const itemRect = item.getBoundingClientRect();
                 
                 if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
@@ -1146,15 +1183,19 @@
                         shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
                         item.setAttribute('data-collided', 'true');
-                        clearTimeout(item.dataset.obstaclePassTimer);
+                        clearTimeout(item.dataset.itemPassTimer); // Renamed from obstaclePassTimer
                         
                         if (item.classList.contains('invincibility')) { 
                             activateInvincibility();
                             item.remove(); 
-                        } else if (!state.isInvincible) {
+                        } else if (item.classList.contains('toy-item')) {
+                            updateScore(5, 100); // 5 score, 100 XP for toys
+                            item.remove();
+                        }
+                        else if (!state.isInvincible) {
                             endGame();
                         } else {
-                            item.remove();
+                            item.remove(); // Remove obstacle if invincible
                         }
                     }
                 }
@@ -1222,9 +1263,9 @@
             if (state.rainInterval) clearInterval(state.rainInterval);
             
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
-            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble, .raindrop').forEach(el => {
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => {
                 el.style.animationPlayState = 'paused';
-                clearTimeout(el.dataset.obstaclePassTimer);
+                clearTimeout(el.dataset.itemPassTimer); // Renamed from obstaclePassTimer
             });
             
             document.removeEventListener('keydown', handleJumpStart);
@@ -1261,9 +1302,9 @@
 
         function restartGame() {
             document.querySelectorAll('.particle').forEach(el => el.remove());
-            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble, .raindrop').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => el.remove());
             document.querySelectorAll('.confetti').forEach(el => el.remove());
-            document.querySelectorAll('.xp-gain-text').forEach(el => el.remove()); // Clear any lingering XP texts
+            document.querySelectorAll('.xp-gain-text').forEach(el => el.remove()); 
 
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
@@ -1271,7 +1312,7 @@
             
             state.isGameOver = true;
             state.score = 0;
-            state.lastBiomeChangeScore = 0; // Reset for new game
+            state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = 0;
             
             elements.gameOverScreen.style.display = 'none';
