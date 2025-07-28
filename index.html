@@ -530,9 +530,9 @@
             }
             /* Adjust toy size for smaller screens */
             .toy-item {
-                width: 50px; 
-                height: 50px;
-                font-size: 50px;
+                width: 60px; /* Slightly smaller for mobile */
+                height: 60px;
+                font-size: 60px;
             }
         }
     </style>
@@ -1008,6 +1008,11 @@
                 const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
                 item.classList.add(randomToy.replace('.png', '')); // Add class like 'Toy1'
                 item.style.backgroundImage = `url('${randomToy}')`;
+                // Make toys larger than general obstacles
+                item.style.width = '70px';
+                item.style.height = '70px';
+                item.style.fontSize = '70px'; // For emoji toys
+                
                 if (isFlying) item.classList.add('flying-type');
                 else item.classList.add('ground-type');
             }
@@ -1031,7 +1036,9 @@
 
             if (item.classList.contains('flying-type')) {
                 item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
-                if (item.classList.contains('toy-item')) item.style.fontSize = `var(--obstacle-size)`; // Ensure toy images use size variable
+                if (item.classList.contains('toy-item') && item.textContent === '') { // Only apply if it's an image-based toy
+                    item.style.fontSize = `var(--obstacle-size)`; 
+                }
             } else {
                 item.style.bottom = `${state.groundHeight}px`; 
             }
@@ -1168,6 +1175,7 @@
                             item.remove(); 
                             return; // Stop further checks for this item
                         } else if (item.classList.contains('toy-item')) {
+                            // Toys do not end the game, they just provide score/XP
                             updateScore(5, 100); // 5 score, 100 XP for toys
                             item.remove();
                             return; // Stop further checks for this item
