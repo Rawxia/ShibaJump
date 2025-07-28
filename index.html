@@ -167,7 +167,7 @@
             text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
             z-index: 20;
         }
-        #score-container { left: 20px; }
+        #score-container { right: 140px; } /* Adjusted position */
         #high-score-container { right: 20px; }
 
         #score #score-number {
@@ -250,31 +250,38 @@
             font-size: 0.8em; 
         }
         
-        #xp-level-display {
+        #xp-level-bar-container {
             position: absolute;
             top: 20px;
             left: 20px;
-            font-size: clamp(0.9em, 2.5vw, 1.2em);
+            width: 100px; 
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.7em;
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            font-family: 'Press Start 2P', cursive;
-            z-index: 101;
-            text-align: left;
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.3);
-            border-radius: 5px;
-            line-height: 1.3;
         }
-        #xp-level-display span {
-            display: block;
+
+        #xp-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #ADD8E6; /* Light Blue XP */
+            transition: width 0.3s ease-out;
+            border-radius: 10px;
         }
-        #xp-level-display .level-text {
-            font-size: 1.1em;
-            color: #ADD8E6; /* Light Blue */
-        }
-        #xp-level-display .xp-text {
-            font-size: 0.9em;
-            color: #FFD700; /* Gold */
+
+        #xp-level-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 20px; 
         }
 
 
@@ -424,7 +431,8 @@
         @media (max-width: 600px) {
             :root { --shiba-size: 50px; --obstacle-size: 40px; }
             #game-container { border-radius: 0; height: 100vh; max-height: 100%; }
-            #score-container, #high-score-container { font-size: 1.2em; }
+            #score-container { font-size: 1em; right: 100px;} /* Adjusted for mobile */
+            #high-score-container { font-size: 1em; right: 10px;} /* Adjusted for mobile */
             #intro-message h2 { font-size: 1.8em; }
             #intro-message p { font-size: 4em; }
             #game-over-screen h2 { font-size: 2.5em; }
@@ -441,10 +449,15 @@
                 top: 10px;
                 right: 10px;
             }
-            #xp-level-display {
-                font-size: clamp(0.8em, 2.2vw, 1.0em);
+            #xp-level-bar-container {
+                width: 80px;
+                height: 18px;
+                font-size: 0.6em;
                 top: 10px;
                 left: 10px;
+            }
+            #xp-level-text {
+                line-height: 18px;
             }
         }
     </style>
@@ -461,13 +474,13 @@
             </div>
         </div>
 
+        <div id="xp-level-bar-container">
+            <div id="xp-bar-fill"></div>
+            <span id="xp-level-text">Level: <span id="player-level">1</span></span>
+        </div>
         <div id="score-container"><span>Score: </span><span id="score"><span id="score-number">0</span></span></div>
         <div id="high-score-container"><span>🏆 </span><span id="high-score">0</span></div>
         
-        <div id="xp-level-display">
-            <span class="level-text">Level: <span id="player-level">1</span></span>
-            <span class="xp-text">XP: <span id="player-xp">0</span>/1000</span>
-        </div>
 
         <div id="splash-screen">
             <h1>ShibaJump!</h1>
@@ -521,7 +534,8 @@
             body: document.body,
             splashHighScore: document.getElementById('splash-high-score'), 
             playerLevelDisplay: document.getElementById('player-level'),
-            playerXPDisplay: document.getElementById('player-xp')
+            xpBarFill: document.getElementById('xp-bar-fill'),
+            xpLevelText: document.getElementById('xp-level-text')
         };
 
         const state = {
@@ -547,14 +561,16 @@
             shibaSpinTimeout: null,
             shibaSpinInterval: null, 
             normalObstacleInterval: 2000, 
-            shibaSpinObstacleInterval: 1200, // Adjusted speed for Shiba Spin
+            shibaSpinObstacleInterval: 1200, 
             playerXP: parseInt(localStorage.getItem('shibaPlayerXP')) || 0,
             playerLevel: parseInt(localStorage.getItem('shibaPlayerLevel')) || 1,
             xpToNextLevel: 1000,
             biomeOrder: [], 
             biomeCurrentIndexInOrder: 0,
-            bubbleInterval: null, // To clear bubble interval
-            rainInterval: null // To clear rain interval
+            bubbleInterval: null, 
+            rainInterval: null,
+            baseGameSpeed: 4, // Initial animation duration for ground/clouds
+            obstacleBaseSpeed: 3.5 // Initial animation duration for obstacles
         };
         
         const EMOJIS = {
@@ -578,15 +594,15 @@
             },
             underwater: {
                 ground: ['🦀', '🐡', '🐙', '🐚'], 
-                flying: ['🐠', '🦑', '🐡'] // Fish as flying obstacles
+                flying: ['🐠', '🦑', '🐡'] 
             },
             night: {
                 ground: ['🐺', '🦉', '🕸️', '🌙'],
                 flying: ['🦇', '🌌', '🌟']
             },
             rainyForest: {
-                ground: ['🐸', '🍄', '💦', '🪨'], // Frogs, wet mushrooms, puddles, wet rocks
-                flying: ['🌧️', '⚡', '🦅'] // Rain cloud, lightning bolt, wet bird
+                ground: ['🐸', '🍄', '💦', '🪨'], 
+                flying: ['🌧️', '⚡', '🦅'] 
             }
         };
 
@@ -656,10 +672,10 @@
             },
             {
                 name: "Rainy Forest",
-                skyColor: "#5F9EA0", /* CadetBlue - overcast/rainy sky */
-                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23778899\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Darker clouds */
-                groundColor: "#4F6F4F", /* Darker forest ground */
-                groundBorderColor: "#364F36", /* Even darker */
+                skyColor: "#5F9EA0", 
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23778899\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', 
+                groundColor: "#4F6F4F", 
+                groundBorderColor: "#364F36", 
                 groundObstacles: EMOJIS.rainyForest.ground,
                 flyingObstacles: EMOJIS.rainyForest.flying,
                 specialEffect: 'rain'
@@ -691,14 +707,12 @@
             
             elements.clouds.style.display = biome.cloudSvg === 'none' ? 'none' : 'block';
 
-            // Clear all special effects before applying new one
             document.querySelectorAll('.special-effect-bubble').forEach(el => el.remove());
             document.querySelectorAll('.raindrop').forEach(el => el.remove());
             if (state.bubbleInterval) clearInterval(state.bubbleInterval);
             if (state.rainInterval) clearInterval(state.rainInterval);
 
 
-            // Apply new special effects
             if (biome.specialEffect === 'bubbles') {
                 startBubbleEffect();
             } else if (biome.specialEffect === 'rain') {
@@ -742,12 +756,12 @@
                 const raindrop = document.createElement('div');
                 raindrop.classList.add('raindrop');
                 raindrop.style.left = `${Math.random() * 100}%`;
-                raindrop.style.animationDuration = `${Math.random() * 0.8 + 0.5}s`; // Vary speed
-                raindrop.style.animationDelay = `${Math.random() * 1}s`; // Stagger drops
+                raindrop.style.animationDuration = `${Math.random() * 0.8 + 0.5}s`; 
+                raindrop.style.animationDelay = `${Math.random() * 1}s`; 
                 elements.gameWorld.appendChild(raindrop);
 
                 setTimeout(() => raindrop.remove(), parseFloat(raindrop.style.animationDuration) * 1000 + parseFloat(raindrop.style.animationDelay) * 1000);
-            }, 50); // More frequent for rain effect
+            }, 50); 
         }
         
         const styleSheet = document.styleSheets[0];
@@ -797,13 +811,13 @@
         function handlePlayButtonClick(e) {
             e.preventDefault(); 
             elements.playButton.classList.add('clicked'); 
-            elements.playButton.style.animation = 'none'; // Stop wiggle
+            elements.playButton.style.animation = 'none'; 
             setTimeout(() => {
                 elements.splashScreen.classList.add('hidden');
                 elements.playButton.removeEventListener('click', handlePlayButtonClick);
                 elements.playButton.removeEventListener('touchstart', handlePlayButtonClick);
                 setTimeout(startIntro, 800);
-            }, 200); // Allow pop animation to play
+            }, 200); 
         }
 
         function startIntro() {
@@ -926,9 +940,11 @@
             
             elements.gameWorld.appendChild(item);
 
-            let animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
+            const speedMultiplier = 1 - (state.score * 0.005); // Faster with higher score, adjust 0.005 for sensitivity
+            let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed * speedMultiplier); // Minimum speed
+            
             if (state.shibaSpinActive) {
-                animationSpeed = Math.max(0.8, animationSpeed * 0.7); // Adjust speed for shiba spin here too
+                animationSpeed = Math.max(0.8, animationSpeed * 0.7); 
             }
             item.style.animationDuration = `${animationSpeed}s`;
 
@@ -936,7 +952,7 @@
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
                     if (item.classList.contains('obstacle')) { 
                         updateScore(); 
-                        addXP(10); // Reward XP for jumping over obstacle
+                        addXP(10); 
                     }
                     item.remove();
                 }
@@ -951,8 +967,19 @@
             applyScoreEffect();
             checkConfetti();
             checkBiomeChange(); 
+            checkGameSpeed(); // Check game speed every score update
             checkShibaSpin(); 
         }
+
+        function checkGameSpeed() {
+            const speedMultiplier = 1 - (state.score * 0.005); // Same multiplier as for obstacles
+            const newGroundAnimationDuration = Math.max(2, state.baseGameSpeed * speedMultiplier);
+            const newCloudAnimationDuration = Math.max(10, 25 * speedMultiplier);
+
+            elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
+            elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
+        }
+
 
         const scoreEffects = ['score-effect-1', 'score-effect-2', 'score-effect-3', 'score-effect-4'];
         function applyScoreEffect() {
@@ -970,7 +997,7 @@
         }
 
         function checkBiomeChange() {
-            if (state.score > 0 && (state.score % 15 === 0) && (state.score !== state.lastBiomeScore)) { // Change biome every 15 points
+            if (state.score > 0 && (state.score % 15 === 0) && (state.score !== state.lastBiomeScore)) { 
                 state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % state.biomeOrder.length;
                 setBiome(state.biomeOrder[state.biomeCurrentIndexInOrder]);
                 state.lastBiomeScore = state.score;
@@ -981,9 +1008,7 @@
             state.playerXP += amount;
             if (state.playerXP >= state.xpToNextLevel) {
                 state.playerLevel++;
-                state.playerXP -= state.xpToNextLevel; // Carry over excess XP
-                // You could increase xpToNextLevel for a harder curve here
-                // state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.2); 
+                state.playerXP -= state.xpToNextLevel; 
             }
             localStorage.setItem('shibaPlayerXP', state.playerXP);
             localStorage.setItem('shibaPlayerLevel', state.playerLevel);
@@ -991,13 +1016,14 @@
         }
 
         function updateXPDisplay() {
-            elements.playerLevelDisplay.textContent = state.playerLevel;
-            elements.playerXPDisplay.textContent = `${state.playerXP}/${state.xpToNextLevel}`;
+            const xpPercentage = (state.playerXP / state.xpToNextLevel) * 100;
+            elements.xpBarFill.style.width = `${xpPercentage}%`;
+            elements.xpLevelText.textContent = `Level: ${state.playerLevel}`;
         }
 
 
         function checkShibaSpin() {
-            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.05) { // Reduced chance of shiba spin
+            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.05) { 
                 activateShibaSpin();
             }
         }
@@ -1011,7 +1037,7 @@
             clearInterval(state.obstacleInterval);
             state.shibaSpinInterval = setInterval(createItem, state.shibaSpinObstacleInterval * (0.8 + Math.random() * 0.4)); 
 
-            const spinDuration = Math.random() * (10000 - 5000) + 5000; // 5-10 seconds
+            const spinDuration = Math.random() * (10000 - 5000) + 5000; 
             state.shibaSpinTimeout = setTimeout(deactivateShibaSpin, spinDuration);
         }
 
@@ -1019,6 +1045,7 @@
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
             elements.shibaSpinMessage.classList.remove('visible');
+            // Wait for transition to complete before hiding display
             setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); 
 
             clearInterval(state.obstacleInterval);
@@ -1153,7 +1180,7 @@
                 elements.highScoreDisplay.textContent = state.highScore;
                 elements.splashHighScore.textContent = state.highScore; 
                 newHighScoreSet = true;
-                addXP(500); // Bonus XP for new high score
+                addXP(500); 
             }
 
             elements.finalScoreDisplay.textContent = state.score;
@@ -1192,7 +1219,7 @@
             if (state.bubbleInterval) clearInterval(state.bubbleInterval);
             if (state.rainInterval) clearInterval(state.rainInterval);
             
-            elements.playButton.style.animation = 'wiggle 2s infinite ease-in-out'; // Restart wiggle animation
+            elements.playButton.style.animation = 'wiggle 2s infinite ease-in-out'; 
             elements.playButton.classList.remove('clicked');
 
 
