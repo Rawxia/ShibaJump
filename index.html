@@ -13,9 +13,14 @@
             --accent-color: #ff6347;
             --shiba-size: 60px;
             --obstacle-size: 50px;
-            --sky-color: #87CEEB;
-            --ground-height-percent: 25%; /* New variable for ground height */
-            --ground-height: 0px; /* Will be calculated by JS */
+            --ground-height-percent: 25%;
+            --ground-height: 0px; 
+            
+            /* Biome-specific colors (default to Sky) */
+            --current-sky-color: #87CEEB; /* Sky Blue */
+            --current-cloud-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="250" viewBox="0 0 50 50"><path fill="%23FFFFFF" d="M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z"/></svg>');
+            --current-ground-color: #e0e0e0;
+            --current-ground-border-color: #ccc;
         }
 
         body {
@@ -25,11 +30,12 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: var(--sky-color);
+            background-color: var(--current-sky-color); /* Use biome color */
             font-family: 'Poppins', sans-serif;
             color: var(--text-color);
             overflow: hidden;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.5s ease-in-out; /* Smooth biome transitions */
         }
 
         #game-container {
@@ -38,13 +44,14 @@
             height: 100vh;
             max-height: 400px;
             border-radius: 20px;
-            background: var(--sky-color);
+            background: var(--current-sky-color); /* Use biome color */
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: background-color 0.5s ease-in-out; /* Smooth biome transitions */
         }
 
         #game-world {
@@ -53,8 +60,8 @@
             height: 100%;
             overflow: hidden;
             display: flex;
-            justify-content: center;
-            align-items: flex-end; /* Align to the bottom */
+            justify-content: center; 
+            align-items: flex-end; 
         }
         
         #clouds {
@@ -63,21 +70,31 @@
             left: 0;
             width: 200%;
             height: 100%;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="250" viewBox="0 0 50 50"><path fill="%23FFFFFF" d="M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z"/></svg>');
+            background-image: var(--current-cloud-svg); /* Use biome cloud */
             background-repeat: repeat-x;
             opacity: 0.7;
             animation: moveClouds 25s linear infinite;
+            transition: background-image 0.5s ease-in-out; /* Smooth cloud transitions */
         }
 
         #ground {
             width: 200%;
-            height: var(--ground-height); /* Now dynamically set by JS to 25% */
-            background: #e0e0e0;
+            height: var(--ground-height); 
+            background: var(--current-ground-color); /* Use biome color */
             position: absolute;
             bottom: 0;
             left: 0;
-            border-top: 2px solid #ccc;
+            border-top: 2px solid var(--current-ground-border-color); /* Use biome color */
             animation: moveGround 4s linear infinite;
+            transition: background 0.5s ease-in-out, border-top-color 0.5s ease-in-out; /* Smooth ground transitions */
+        }
+        
+        /* Animation speed adjustments for Shiba Spin */
+        body.shiba-spin #ground, body.shiba-spin #clouds {
+            animation-duration: 2s !important; /* Faster ground/clouds */
+        }
+        body.shiba-spin .obstacle, body.shiba-spin .power-up {
+            animation-duration: 1.5s !important; /* Faster obstacles */
         }
 
         #shiba {
@@ -87,7 +104,7 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: var(--ground-height); /* Position relative to dynamic ground */
+            bottom: var(--ground-height); 
             left: calc(50% - (var(--shiba-size) / 2)); 
             transition: transform 0.15s ease-out; 
             z-index: 10;
@@ -114,15 +131,13 @@
             animation: moveObstacle 3.5s linear;
         }
         
-        /* Ground Obstacle */
         .obstacle.ground-type {
-            bottom: var(--ground-height); /* Aligned with the ground */
+            bottom: var(--ground-height); 
         }
 
-        /* Flying Obstacle (Plane) */
         .obstacle.flying-type {
-            bottom: calc(var(--ground-height) + 100px); /* Higher up for flying */
-            font-size: 60px; /* Slightly larger emoji for plane */
+            bottom: calc(var(--ground-height) + 100px); 
+            font-size: 60px; 
         }
 
         #score-container, #high-score-container {
@@ -137,7 +152,7 @@
         #score-container { left: 20px; }
         #high-score-container { right: 20px; }
 
-        #splash-screen, #game-over-screen, #intro-message {
+        #splash-screen, #game-over-screen, #intro-message, #shiba-spin-message {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -152,9 +167,19 @@
             background-color: var(--accent-color);
             color: white;
             transition: transform 0.8s cubic-bezier(0.86, 0, 0.07, 1);
+            text-align: center;
         }
         #splash-screen.hidden { transform: translateY(-100%); }
-        #splash-screen p { font-size: 1.2em; }
+        #splash-screen h1 {
+            font-size: 4em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        #splash-screen p { 
+            font-size: 1.2em; 
+            margin: 0;
+            padding: 0 20px;
+        }
 
         #splash-screen button {
             background-color: #fff;
@@ -182,6 +207,21 @@
         }
         #intro-message h2 { font-size: 2.5em; margin: 0; }
         #intro-message p { font-size: 5em; margin: 0; font-weight: 700; }
+
+        #shiba-spin-message {
+            display: none; /* Hidden by default */
+            background-color: rgba(255, 255, 255, 0.8);
+            color: var(--accent-color);
+            font-size: 3em;
+            font-weight: 800;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #shiba-spin-message.visible {
+            opacity: 1;
+        }
+
 
         #game-over-screen {
             display: none;
@@ -237,7 +277,7 @@
             border-radius: 50%; 
         }
         @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
             100% { transform: translateY(200vh) rotate(720deg); opacity: 0; }
         }
 
@@ -258,6 +298,8 @@
             #intro-message h2 { font-size: 1.8em; }
             #intro-message p { font-size: 4em; }
             #game-over-screen h2 { font-size: 2.5em; }
+            #splash-screen h1 { font-size: 3em; }
+            #splash-screen p { font-size: 1em; }
             #splash-screen button {
                 padding: 10px 20px;
                 font-size: 1.2em;
@@ -278,12 +320,17 @@
         <div id="high-score-container"><span>🏆 </span><span id="high-score">0</span></div>
 
         <div id="splash-screen">
-            <p>Created with ❤️ from Rawxia</p>
+            <h1>ShibaJump!</h1>
+            <p>Tap for longer jumps and get the highest score!</p>
             <button id="play-button">Play Game</button>
         </div>
         <div id="intro-message">
             <h2>Get ready to tap!</h2>
             <p id="countdown">3</p>
+        </div>
+        
+        <div id="shiba-spin-message">
+            <span>Shiba Spin!</span>
         </div>
 
         <div id="game-over-screen">
@@ -312,7 +359,9 @@
             newHighScoreMessage: document.getElementById('new-high-score-message'),
             ground: document.getElementById('ground'),
             clouds: document.getElementById('clouds'),
-            gameContainer: document.getElementById('game-container') 
+            gameContainer: document.getElementById('game-container'),
+            shibaSpinMessage: document.getElementById('shiba-spin-message'),
+            body: document.body // Added body for global class
         };
 
         const state = {
@@ -324,34 +373,98 @@
             gameLoopInterval: null,
             obstacleInterval: null,
             confettiInterval: null, 
-            shibaY: 0, // Shiba's current Y position (bottom value) - will be set dynamically
+            shibaY: 0, 
             velocityY: 0, 
             gravity: 0.8, 
             jumpStrength: -18, 
             maxHoldJumpBoost: -8, 
             jumpHoldTimer: null,
-            groundHeight: 0, // Store calculated ground height
-            flyingObstacleThreshold: 20 // Score at which flying obstacles start appearing
+            groundHeight: 0, 
+            flyingObstacleThreshold: 20,
+            currentBiomeIndex: 0, // Track current biome
+            lastBiomeScore: 0, // Score when last biome changed
+            shibaSpinActive: false,
+            shibaSpinTimeout: null,
+            shibaSpinInterval: null, // For random obstacle spawn in spin
+            normalObstacleInterval: 2000, // Default obstacle interval
+            shibaSpinObstacleInterval: 800 // Faster interval during spin
         };
         
         const EMOJIS = {
             groundObstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
-            flyingObstacles: ['✈️', '🚁', '🚀'], // New flying obstacles
+            flyingObstacles: ['✈️', '🚁', '🚀'], 
             powerUp: '⭐'
         };
 
-        const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
+        const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; // More confetti colors
+
+        // Biome definitions
+        const BIOMES = [
+            {
+                name: "Sky",
+                skyColor: "#87CEEB",
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23FFFFFF\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")',
+                groundColor: "#e0e0e0",
+                groundBorderColor: "#ccc"
+            },
+            {
+                name: "Desert",
+                skyColor: "#FFD700", /* Gold */
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23FFD700\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Yellowish clouds */
+                groundColor: "#F4A460", /* SandyBrown */
+                groundBorderColor: "#CD853F" /* Peru */
+            },
+            {
+                name: "Forest",
+                skyColor: "#8FBC8F", /* DarkSeaGreen */
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23ADD8E6\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Light blue clouds */
+                groundColor: "#556B2F", /* DarkOliveGreen */
+                groundBorderColor: "#6B8E23" /* OliveDrab */
+            },
+            {
+                name: "Night",
+                skyColor: "#1A2A3A", /* Dark Blue-Grey */
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23778899\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Greyish clouds */
+                groundColor: "#36454F", /* Charcoal */
+                groundBorderColor: "#2F4F4F" /* DarkSlateGrey */
+            }
+        ];
+
+        function setBiome(index) {
+            const biome = BIOMES[index];
+            if (!biome) return; // Fallback if index is out of bounds
+
+            document.documentElement.style.setProperty('--current-sky-color', biome.skyColor);
+            document.documentElement.style.setProperty('--current-cloud-svg', biome.cloudSvg);
+            document.documentElement.style.setProperty('--current-ground-color', biome.groundColor);
+            document.documentElement.style.setProperty('--current-ground-border-color', biome.groundBorderColor);
+        }
+
 
         function setDynamicGroundHeight() {
             const gameContainerHeight = elements.gameContainer.clientHeight;
-            // Calculate 25% of gameContainerHeight
             state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
             document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
+            
+            // Re-adjust shiba's position if it's on the ground
+            if (state.shibaY <= state.groundHeight) {
+                state.shibaY = state.groundHeight;
+                elements.shiba.style.bottom = `${state.shibaY}px`;
+            }
+
+            // Adjust obstacle and power-up positions
+            document.querySelectorAll('.obstacle.ground-type, .power-up').forEach(el => {
+                el.style.bottom = `${state.groundHeight}px`;
+            });
+            document.querySelectorAll('.obstacle.flying-type').forEach(el => {
+                // Ensure a minimum height above ground for flying obstacles
+                el.style.bottom = `calc(${state.groundHeight}px + 100px + ${Math.random() * 50}px)`;
+            });
         }
 
         function init() {
-            setDynamicGroundHeight(); // Calculate and set ground height on init
-            window.addEventListener('resize', setDynamicGroundHeight); // Recalculate on resize
+            setDynamicGroundHeight(); 
+            window.addEventListener('resize', setDynamicGroundHeight); 
 
             elements.highScoreDisplay.textContent = state.highScore;
             elements.playButton.addEventListener('click', hideSplashAndStart);
@@ -387,13 +500,20 @@
             elements.scoreDisplay.textContent = state.score;
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
+            elements.shibaSpinMessage.style.display = 'none'; // Hide spin message
+            elements.body.classList.remove('shiba-spin'); // Remove spin class
+
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
-            // Reset Shiba position for new game, matching dynamic ground height
             state.shibaY = state.groundHeight; 
             state.velocityY = 0;
             elements.shiba.style.bottom = `${state.shibaY}px`;
             elements.shiba.style.transform = `translateY(0px)`; 
+
+            // Reset biome to the first one
+            state.currentBiomeIndex = 0;
+            state.lastBiomeScore = 0;
+            setBiome(state.currentBiomeIndex);
 
             document.addEventListener('keydown', handleJumpStart);
             document.addEventListener('keyup', handleJumpEnd);
@@ -405,14 +525,13 @@
             document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
-            state.obstacleInterval = setInterval(createItem, 2000);
+            state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
         }
 
         const handleJumpStart = (e) => {
-            // Check if it's a keyboard event (Spacebar) OR a mouse/touch event on the game container
             const isKeyEvent = e.code === 'Space';
             const isMouseEvent = e.type === 'mousedown' && e.target === elements.gameContainer;
-            const isTouchEvent = e.type === 'touchstart'; // No need for target check here, as it's attached to gameContainer
+            const isTouchEvent = e.type === 'touchstart' && e.target === elements.gameContainer; // Target check for touchstart
 
             if (!state.isGameOver && !state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
                 e.preventDefault(); 
@@ -428,10 +547,9 @@
         };
 
         const handleJumpEnd = (e) => {
-            // Check if it's a keyboard event (Spacebar) OR a mouse/touch event on the game container
             const isKeyEvent = e.code === 'Space';
             const isMouseEvent = e.type === 'mouseup' && e.target === elements.gameContainer;
-            const isTouchEvent = e.type === 'touchend'; // No need for target check here
+            const isTouchEvent = e.type === 'touchend'; 
 
             if (state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
                 if (state.jumpHoldTimer) {
@@ -449,43 +567,91 @@
             if (state.isGameOver) return;
             
             const item = document.createElement('div');
-            const isPowerUp = Math.random() < 0.125; // 1 in 8 chance for power-up
+            const isPowerUp = Math.random() < 0.125; 
 
             if (isPowerUp) {
                 item.classList.add('power-up');
                 item.textContent = EMOJIS.powerUp;
-                item.style.bottom = `${state.groundHeight + 20}px`; // Power-up slightly above ground
+                // Power-ups appear slightly above the ground
+                item.style.bottom = `${state.groundHeight + 20}px`; 
             } else {
-                const isFlyingObstacle = state.score >= state.flyingObstacleThreshold && Math.random() < 0.5; // 50% chance for flying if score is high enough
+                // Determine if it's a flying obstacle or ground obstacle
+                const canSpawnFlying = state.score >= state.flyingObstacleThreshold;
+                const isFlyingObstacle = canSpawnFlying && Math.random() < 0.5; 
 
                 if (isFlyingObstacle) {
                     item.classList.add('obstacle', 'flying-type');
                     item.textContent = EMOJIS.flyingObstacles[Math.floor(Math.random() * EMOJIS.flyingObstacles.length)];
-                    // Position flying obstacles higher
-                    item.style.bottom = `calc(${state.groundHeight}px + 100px + ${Math.random() * 50}px)`; 
+                    // Flying obstacles vary in height above the ground
+                    item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
                 } else {
                     item.classList.add('obstacle', 'ground-type');
                     item.textContent = EMOJIS.groundObstacles[Math.floor(Math.random() * EMOJIS.groundObstacles.length)];
-                    item.style.bottom = `${state.groundHeight}px`; // Ground obstacle
+                    item.style.bottom = `${state.groundHeight}px`; 
                 }
             }
             
             elements.gameWorld.appendChild(item);
 
-            const animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
+            let animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
+            if (state.shibaSpinActive) {
+                animationSpeed = Math.max(0.5, animationSpeed * 0.5); // Make obstacles move even faster
+            }
             item.style.animationDuration = `${animationSpeed}s`;
 
             const obstaclePassTimer = setTimeout(() => {
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
-                    if (item.classList.contains('obstacle')) { // Only score for obstacles
+                    if (item.classList.contains('obstacle')) { 
                         state.score++;
                         elements.scoreDisplay.textContent = state.score;
+                        checkBiomeChange(); // Check for biome change on score update
+                        checkShibaSpin(); // Check for Shiba Spin on score update
                     }
                     item.remove();
                 }
             }, animationSpeed * 1000);
 
             item.dataset.obstaclePassTimer = obstaclePassTimer;
+        }
+
+        function checkBiomeChange() {
+            if (state.score >= state.lastBiomeScore + 5) {
+                state.currentBiomeIndex = (state.currentBiomeIndex + 1) % BIOMES.length;
+                setBiome(state.currentBiomeIndex);
+                state.lastBiomeScore = state.score;
+            }
+        }
+
+        function checkShibaSpin() {
+            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.1) { // 10% chance after 25 score
+                activateShibaSpin();
+            }
+        }
+
+        function activateShibaSpin() {
+            state.shibaSpinActive = true;
+            elements.body.classList.add('shiba-spin'); // Apply global speed class
+            elements.shibaSpinMessage.style.display = 'flex';
+            elements.shibaSpinMessage.classList.add('visible');
+
+            // Make obstacle spawning faster and more random during Shiba Spin
+            clearInterval(state.obstacleInterval);
+            state.shibaSpinInterval = setInterval(createItem, state.shibaSpinObstacleInterval * (0.8 + Math.random() * 0.4)); // Vary interval slightly
+
+            const spinDuration = Math.random() * (60 - 30) * 1000 + 30 * 1000; // 30 to 60 seconds
+            state.shibaSpinTimeout = setTimeout(deactivateShibaSpin, spinDuration);
+        }
+
+        function deactivateShibaSpin() {
+            state.shibaSpinActive = false;
+            elements.body.classList.remove('shiba-spin');
+            elements.shibaSpinMessage.classList.remove('visible');
+            setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); // Hide after transition
+
+            // Revert to normal obstacle spawning
+            clearInterval(state.obstacleInterval);
+            clearInterval(state.shibaSpinInterval);
+            state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
         }
 
         function gameLoop() {
@@ -565,12 +731,15 @@
                 confetti.classList.add('confetti');
                 confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
                 confetti.style.left = Math.random() * containerRect.width + 'px';
-                confetti.style.top = (Math.random() * 50 - 100) + 'px'; 
-                confetti.style.animationDelay = (Math.random() * 0.5) + 's';
-                confetti.style.animationDuration = (2 + Math.random() * 1) + 's';
+                confetti.style.top = (Math.random() * -containerRect.height / 2) + 'px'; // Start higher up
+                confetti.style.animationDelay = (Math.random() * 0.8) + 's';
+                confetti.style.animationDuration = (2 + Math.random() * 1.5) + 's'; // Longer duration
+                
+                // Random initial rotation
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
 
                 elements.gameWorld.appendChild(confetti);
-                setTimeout(() => confetti.remove(), parseFloat(confetti.style.animationDuration) * 1000);
+                setTimeout(() => confetti.remove(), parseFloat(confetti.style.animationDuration) * 1000 + parseFloat(confetti.style.animationDelay) * 1000);
             }
         }
 
@@ -586,6 +755,8 @@
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
+            clearInterval(state.shibaSpinInterval); // Clear spin interval
+            clearTimeout(state.shibaSpinTimeout); // Clear spin timeout
             
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up').forEach(el => {
@@ -636,6 +807,13 @@
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
             
+            // Reset Shiba Spin state
+            state.shibaSpinActive = false;
+            elements.body.classList.remove('shiba-spin');
+            elements.shibaSpinMessage.style.display = 'none';
+            clearTimeout(state.shibaSpinTimeout);
+            clearInterval(state.shibaSpinInterval);
+
             startIntro();
         }
         
