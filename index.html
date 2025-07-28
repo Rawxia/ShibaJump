@@ -78,7 +78,8 @@
         #shiba {
             width: var(--shiba-size);
             height: var(--shiba-size);
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐕</text></svg>');
+            /* Updated to reference shiba.gif in the same directory */
+            background-image: url('shiba.gif'); 
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
@@ -347,7 +348,7 @@
             setTimeout(() => {
                 elements.shiba.classList.remove('jump');
                 state.isJumping = false;
-            }, 700); // Increased from 600ms to match new jump animation
+            }, 700); 
         }
 
         function createItem() {
