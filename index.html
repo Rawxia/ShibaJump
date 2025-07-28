@@ -518,13 +518,13 @@
             background-color: white;
             border-radius: 50%;
             opacity: 0;
-            animation: snow-fall var(--duration) linear var(--delay) infinite;
+            animation: snow-fall var(--duration) linear var(--delay) forwards; /* Changed to forwards to match others */
             z-index: 5;
             pointer-events: none;
         }
         @keyframes snow-fall {
             0% { transform: translateY(-10px) translateX(0px); opacity: 0.8; }
-            100% { transform: translateY(450px) translateX(var(--drift-x)); opacity: 0; }
+            100% { transform: translateY(450px) translateX(var(--drift-x)); opacity: 0; } /* Adjust 450px based on game container height */
         }
 
         .star {
@@ -542,6 +542,21 @@
         @keyframes star-twinkle {
             0%, 100% { opacity: 0; }
             50% { opacity: 1; }
+        }
+
+        .special-effect-bubble {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            animation: bubble-float var(--duration) linear forwards;
+            z-index: 5;
+        }
+        @keyframes bubble-float {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateY(-300px) translateX(var(--bubble-drift)); opacity: 0; }
         }
 
 
@@ -911,22 +926,19 @@
                 }
                 const bubble = document.createElement('div');
                 bubble.classList.add('special-effect-bubble');
-                bubble.style.position = 'absolute';
                 bubble.style.width = `${Math.random() * 10 + 5}px`;
                 bubble.style.height = bubble.style.width;
-                bubble.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-                bubble.style.borderRadius = '50%';
                 bubble.style.bottom = `${state.groundHeight}px`; 
                 bubble.style.left = `${Math.random() * 100}%`;
-                bubble.style.opacity = 0;
                 
                 const driftAmount = Math.random() > 0.5 ? 20 : -20;
                 bubble.style.setProperty('--bubble-drift', `${driftAmount}px`); 
-                bubble.style.animation = `bubble-float ${Math.random() * 8 + 4}s linear forwards`;
+                bubble.style.setProperty('--duration', `${Math.random() * 8 + 4}s`); 
                 
                 elements.gameWorld.appendChild(bubble);
 
-                setTimeout(() => bubble.remove(), parseFloat(bubble.style.animationDuration) * 1000); 
+                // Adjusted timeout to match new property name
+                setTimeout(() => bubble.remove(), parseFloat(bubble.style.getPropertyValue('--duration')) * 1000); 
             }, 300); 
         }
 
@@ -960,7 +972,7 @@
                 leaf.style.setProperty('--delay', `${Math.random() * 2}s`);
                 leaf.style.setProperty('--rotation', `${Math.random() * 360}deg`);
                 elements.gameWorld.appendChild(leaf);
-                setTimeout(() => leaf.remove(), parseFloat(leaf.style.animationDuration) * 1000 + parseFloat(leaf.style.animationDelay) * 1000);
+                setTimeout(() => leaf.remove(), parseFloat(leaf.style.getPropertyValue('--duration')) * 1000 + parseFloat(leaf.style.getPropertyValue('--delay')) * 1000);
             }, 150);
         }
 
@@ -979,7 +991,7 @@
                 dust.style.setProperty('--drift-x', `${Math.random() * 100 - 50}px`); /* Horizontal drift */
                 dust.style.setProperty('--drift-y', `${Math.random() * -50}px`); /* Upward drift */
                 elements.gameWorld.appendChild(dust);
-                setTimeout(() => dust.remove(), parseFloat(dust.style.animationDuration) * 1000 + parseFloat(dust.style.animationDelay) * 1000);
+                setTimeout(() => dust.remove(), parseFloat(dust.style.getPropertyValue('--duration')) * 1000 + parseFloat(dust.style.getPropertyValue('--delay')) * 1000);
             }, 100);
         }
 
@@ -996,7 +1008,7 @@
                 snowflake.style.setProperty('--delay', `${Math.random() * 2}s`);
                 snowflake.style.setProperty('--drift-x', `${Math.random() * 50 - 25}px`); 
                 elements.gameWorld.appendChild(snowflake);
-                setTimeout(() => snowflake.remove(), parseFloat(snowflake.style.animationDuration) * 1000 + parseFloat(snowflake.style.animationDelay) * 1000);
+                setTimeout(() => snowflake.remove(), parseFloat(snowflake.style.getPropertyValue('--duration')) * 1000 + parseFloat(snowflake.style.getPropertyValue('--delay')) * 1000);
             }, 80);
         }
 
@@ -1013,19 +1025,12 @@
                 star.style.setProperty('--duration', `${Math.random() * 3 + 1.5}s`);
                 star.style.setProperty('--delay', `${Math.random() * 2}s`);
                 elements.gameWorld.appendChild(star);
-                setTimeout(() => star.remove(), parseFloat(star.style.animationDuration) * 1000 + parseFloat(star.style.animationDelay) * 1000);
+                setTimeout(() => star.remove(), parseFloat(star.style.getPropertyValue('--duration')) * 1000 + parseFloat(star.style.getPropertyValue('--delay')) * 1000);
             }, 200);
         }
         
         const styleSheet = document.styleSheets[0];
-        styleSheet.insertRule(`
-            @keyframes bubble-float {
-                0% { transform: translateY(0) translateX(0); opacity: 0; }
-                20% { opacity: 1; }
-                100% { transform: translateY(-300px) translateX(var(--bubble-drift)); opacity: 0; }
-            }
-        `, styleSheet.cssRules.length);
-
+        // Ensure this rule exists or is added once for bubble-float. Removed duplicate.
 
         function setDynamicGroundHeight() {
             const gameContainerHeight = elements.gameContainer.clientHeight;
@@ -1239,8 +1244,8 @@
         function checkGameSpeed() {
             // Adjust speeds based on score for increasing difficulty
             const speedFactor = 1 + (state.score * 0.015); // Faster increase in speed
-            const newGroundAnimationDuration = Math.max(1.5, state.baseGameSpeed / speedFactor); // Faster minimum speed
-            const newCloudAnimationDuration = Math.max(8, 25 / speedFactor); // Faster minimum speed
+            const newGroundAnimationDuration = Math.max(1.0, state.baseGameSpeed / speedFactor); // Faster minimum speed
+            const newCloudAnimationDuration = Math.max(5, 25 / speedFactor); // Faster minimum speed
 
             elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
             elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
@@ -1466,13 +1471,15 @@
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
+            
+            // Clear all special effect intervals
             clearInterval(state.bubbleInterval);
             clearInterval(state.rainInterval);
             clearInterval(state.leafInterval);
             clearInterval(state.dustInterval);
             clearInterval(state.snowInterval);
             clearInterval(state.starInterval);
-            
+
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => {
                 el.style.animationPlayState = 'paused';
