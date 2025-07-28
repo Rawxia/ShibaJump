@@ -322,6 +322,7 @@
         <div id="splash-screen">
             <h1>ShibaJump!</h1>
             <p>Tap for longer jumps and get the highest score!</p>
+            <p>Look out for the 🐔 to become invincible!</p>
             <button id="play-button">Play Game</button>
         </div>
         <div id="intro-message">
@@ -361,7 +362,7 @@
             clouds: document.getElementById('clouds'),
             gameContainer: document.getElementById('game-container'),
             shibaSpinMessage: document.getElementById('shiba-spin-message'),
-            body: document.body // Added body for global class
+            body: document.body 
         };
 
         const state = {
@@ -381,22 +382,23 @@
             jumpHoldTimer: null,
             groundHeight: 0, 
             flyingObstacleThreshold: 20,
-            currentBiomeIndex: 0, // Track current biome
-            lastBiomeScore: 0, // Score when last biome changed
+            currentBiomeIndex: 0, 
+            lastBiomeScore: 0, 
             shibaSpinActive: false,
             shibaSpinTimeout: null,
-            shibaSpinInterval: null, // For random obstacle spawn in spin
-            normalObstacleInterval: 2000, // Default obstacle interval
-            shibaSpinObstacleInterval: 800 // Faster interval during spin
+            shibaSpinInterval: null, 
+            normalObstacleInterval: 2000, 
+            shibaSpinObstacleInterval: 800 
         };
         
         const EMOJIS = {
             groundObstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
             flyingObstacles: ['✈️', '🚁', '🚀'], 
-            powerUp: '⭐'
+            powerUp: '⭐',
+            invincibilityPowerUp: '🐔' // New emoji for invincibility power-up
         };
 
-        const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; // More confetti colors
+        const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; 
 
         // Biome definitions
         const BIOMES = [
@@ -432,7 +434,7 @@
 
         function setBiome(index) {
             const biome = BIOMES[index];
-            if (!biome) return; // Fallback if index is out of bounds
+            if (!biome) return; 
 
             document.documentElement.style.setProperty('--current-sky-color', biome.skyColor);
             document.documentElement.style.setProperty('--current-cloud-svg', biome.cloudSvg);
@@ -446,18 +448,15 @@
             state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
             document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
             
-            // Re-adjust shiba's position if it's on the ground
             if (state.shibaY <= state.groundHeight) {
                 state.shibaY = state.groundHeight;
                 elements.shiba.style.bottom = `${state.shibaY}px`;
             }
 
-            // Adjust obstacle and power-up positions
             document.querySelectorAll('.obstacle.ground-type, .power-up').forEach(el => {
                 el.style.bottom = `${state.groundHeight}px`;
             });
             document.querySelectorAll('.obstacle.flying-type').forEach(el => {
-                // Ensure a minimum height above ground for flying obstacles
                 el.style.bottom = `calc(${state.groundHeight}px + 100px + ${Math.random() * 50}px)`;
             });
         }
@@ -500,8 +499,8 @@
             elements.scoreDisplay.textContent = state.score;
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
-            elements.shibaSpinMessage.style.display = 'none'; // Hide spin message
-            elements.body.classList.remove('shiba-spin'); // Remove spin class
+            elements.shibaSpinMessage.style.display = 'none'; 
+            elements.body.classList.remove('shiba-spin'); 
 
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
@@ -510,17 +509,17 @@
             elements.shiba.style.bottom = `${state.shibaY}px`;
             elements.shiba.style.transform = `translateY(0px)`; 
 
-            // Reset biome to the first one
             state.currentBiomeIndex = 0;
             state.lastBiomeScore = 0;
             setBiome(state.currentBiomeIndex);
 
             document.addEventListener('keydown', handleJumpStart);
             document.addEventListener('keyup', handleJumpEnd);
+            // Attaching touch events directly to gameContainer for universal mobile tap
+            elements.gameContainer.addEventListener('touchstart', handleJumpStart, { passive: false });
+            elements.gameContainer.addEventListener('touchend', handleJumpEnd, { passive: false });
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
-            elements.gameContainer.addEventListener('touchstart', handleJumpStart);
-            elements.gameContainer.addEventListener('touchend', handleJumpEnd);
             
             document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
             
@@ -530,11 +529,15 @@
 
         const handleJumpStart = (e) => {
             const isKeyEvent = e.code === 'Space';
-            const isMouseEvent = e.type === 'mousedown' && e.target === elements.gameContainer;
-            const isTouchEvent = e.type === 'touchstart' && e.target === elements.gameContainer; // Target check for touchstart
+            const isMouseEvent = e.type === 'mousedown';
+            const isTouchEvent = e.type === 'touchstart';
 
-            if (!state.isGameOver && !state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
-                e.preventDefault(); 
+            // Ensure the event target is the game container or a child within it,
+            // but not a button on the splash/game over screen.
+            const isGameAreaClick = elements.gameContainer.contains(e.target) && !e.target.closest('button');
+
+            if (!state.isGameOver && !state.isJumping && (isKeyEvent || (isGameAreaClick && (isMouseEvent || isTouchEvent)))) {
+                e.preventDefault(); // Prevent default touch behavior (like scrolling)
                 state.isJumping = true;
                 state.velocityY = state.jumpStrength; 
                 
@@ -548,10 +551,12 @@
 
         const handleJumpEnd = (e) => {
             const isKeyEvent = e.code === 'Space';
-            const isMouseEvent = e.type === 'mouseup' && e.target === elements.gameContainer;
+            const isMouseEvent = e.type === 'mouseup';
             const isTouchEvent = e.type === 'touchend'; 
 
-            if (state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
+            const isGameAreaClickRelease = elements.gameContainer.contains(e.target) && !e.target.closest('button');
+
+            if (state.isJumping && (isKeyEvent || (isGameAreaClickRelease && (isMouseEvent || isTouchEvent)))) {
                 if (state.jumpHoldTimer) {
                     clearTimeout(state.jumpHoldTimer);
                     state.jumpHoldTimer = null;
@@ -567,22 +572,28 @@
             if (state.isGameOver) return;
             
             const item = document.createElement('div');
-            const isPowerUp = Math.random() < 0.125; 
+            
+            // Randomly decide between normal obstacle, star power-up, or chicken power-up
+            const randomChance = Math.random();
+            const isStarPowerUp = randomChance < 0.08; // 8% chance for star
+            const isChickenPowerUp = randomChance >= 0.08 && randomChance < 0.12; // 4% chance for chicken (total 12% for any power-up)
 
-            if (isPowerUp) {
+            if (isStarPowerUp) {
                 item.classList.add('power-up');
                 item.textContent = EMOJIS.powerUp;
-                // Power-ups appear slightly above the ground
                 item.style.bottom = `${state.groundHeight + 20}px`; 
-            } else {
-                // Determine if it's a flying obstacle or ground obstacle
+            } else if (isChickenPowerUp) {
+                item.classList.add('power-up', 'invincibility');
+                item.textContent = EMOJIS.invincibilityPowerUp;
+                item.style.bottom = `${state.groundHeight + 50}px`; // Chicken might appear slightly higher
+            }
+            else {
                 const canSpawnFlying = state.score >= state.flyingObstacleThreshold;
                 const isFlyingObstacle = canSpawnFlying && Math.random() < 0.5; 
 
                 if (isFlyingObstacle) {
                     item.classList.add('obstacle', 'flying-type');
                     item.textContent = EMOJIS.flyingObstacles[Math.floor(Math.random() * EMOJIS.flyingObstacles.length)];
-                    // Flying obstacles vary in height above the ground
                     item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
                 } else {
                     item.classList.add('obstacle', 'ground-type');
@@ -595,7 +606,7 @@
 
             let animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
             if (state.shibaSpinActive) {
-                animationSpeed = Math.max(0.5, animationSpeed * 0.5); // Make obstacles move even faster
+                animationSpeed = Math.max(0.5, animationSpeed * 0.5); 
             }
             item.style.animationDuration = `${animationSpeed}s`;
 
@@ -604,8 +615,8 @@
                     if (item.classList.contains('obstacle')) { 
                         state.score++;
                         elements.scoreDisplay.textContent = state.score;
-                        checkBiomeChange(); // Check for biome change on score update
-                        checkShibaSpin(); // Check for Shiba Spin on score update
+                        checkBiomeChange(); 
+                        checkShibaSpin(); 
                     }
                     item.remove();
                 }
@@ -623,22 +634,21 @@
         }
 
         function checkShibaSpin() {
-            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.1) { // 10% chance after 25 score
+            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.1) { 
                 activateShibaSpin();
             }
         }
 
         function activateShibaSpin() {
             state.shibaSpinActive = true;
-            elements.body.classList.add('shiba-spin'); // Apply global speed class
+            elements.body.classList.add('shiba-spin'); 
             elements.shibaSpinMessage.style.display = 'flex';
             elements.shibaSpinMessage.classList.add('visible');
 
-            // Make obstacle spawning faster and more random during Shiba Spin
             clearInterval(state.obstacleInterval);
-            state.shibaSpinInterval = setInterval(createItem, state.shibaSpinObstacleInterval * (0.8 + Math.random() * 0.4)); // Vary interval slightly
+            state.shibaSpinInterval = setInterval(createItem, state.shibaSpinObstacleInterval * (0.8 + Math.random() * 0.4)); 
 
-            const spinDuration = Math.random() * (60 - 30) * 1000 + 30 * 1000; // 30 to 60 seconds
+            const spinDuration = Math.random() * (60 - 30) * 1000 + 30 * 1000; 
             state.shibaSpinTimeout = setTimeout(deactivateShibaSpin, spinDuration);
         }
 
@@ -646,9 +656,8 @@
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
             elements.shibaSpinMessage.classList.remove('visible');
-            setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); // Hide after transition
+            setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); 
 
-            // Revert to normal obstacle spawning
             clearInterval(state.obstacleInterval);
             clearInterval(state.shibaSpinInterval);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
@@ -688,9 +697,12 @@
                         item.setAttribute('data-collided', 'true');
                         clearTimeout(item.dataset.obstaclePassTimer);
                         
-                        if (item.classList.contains('power-up')) {
-                            activatePowerUp();
+                        if (item.classList.contains('invincibility')) { // Check for new invincibility power-up
+                            activateInvincibility();
                             item.remove();
+                        } else if (item.classList.contains('power-up')) { // Existing star power-up
+                            // Current logic for star power-up if any, otherwise just remove it.
+                            item.remove(); // No specific effect for star in current code
                         } else if (!state.isInvincible) {
                             endGame();
                         }
@@ -699,13 +711,13 @@
             });
         }
         
-        function activatePowerUp() {
+        function activateInvincibility() {
             state.isInvincible = true;
             elements.shiba.classList.add('invincible');
             setTimeout(() => {
                 state.isInvincible = false;
                 elements.shiba.classList.remove('invincible');
-            }, 5000);
+            }, 5000); // 5 seconds of invincibility
         }
         
         function createPoofEffect() {
@@ -731,11 +743,10 @@
                 confetti.classList.add('confetti');
                 confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
                 confetti.style.left = Math.random() * containerRect.width + 'px';
-                confetti.style.top = (Math.random() * -containerRect.height / 2) + 'px'; // Start higher up
+                confetti.style.top = (Math.random() * -containerRect.height / 2) + 'px'; 
                 confetti.style.animationDelay = (Math.random() * 0.8) + 's';
-                confetti.style.animationDuration = (2 + Math.random() * 1.5) + 's'; // Longer duration
+                confetti.style.animationDuration = (2 + Math.random() * 1.5) + 's'; 
                 
-                // Random initial rotation
                 confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
 
                 elements.gameWorld.appendChild(confetti);
@@ -755,8 +766,8 @@
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
-            clearInterval(state.shibaSpinInterval); // Clear spin interval
-            clearTimeout(state.shibaSpinTimeout); // Clear spin timeout
+            clearInterval(state.shibaSpinInterval); 
+            clearTimeout(state.shibaSpinTimeout); 
             
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up').forEach(el => {
@@ -766,10 +777,10 @@
             
             document.removeEventListener('keydown', handleJumpStart);
             document.removeEventListener('keyup', handleJumpEnd);
-            elements.gameContainer.removeEventListener('mousedown', handleJumpStart);
-            elements.gameContainer.removeEventListener('mouseup', handleJumpEnd);
             elements.gameContainer.removeEventListener('touchstart', handleJumpStart);
             elements.gameContainer.removeEventListener('touchend', handleJumpEnd);
+            elements.gameContainer.removeEventListener('mousedown', handleJumpStart);
+            elements.gameContainer.removeEventListener('mouseup', handleJumpEnd);
 
             let newHighScoreSet = false;
             if (state.score > state.highScore) {
@@ -807,7 +818,6 @@
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
             
-            // Reset Shiba Spin state
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
             elements.shibaSpinMessage.style.display = 'none';
