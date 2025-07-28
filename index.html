@@ -78,7 +78,6 @@
         #shiba {
             width: var(--shiba-size);
             height: var(--shiba-size);
-            /* Updated to reference shiba.gif in the same directory */
             background-image: url('shiba.gif'); 
             background-size: contain;
             background-repeat: no-repeat;
@@ -90,8 +89,8 @@
         }
 
         /* Adjusted jump animation for higher and longer jump */
-        @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-150px); } 100% { transform: translateY(0); } }
-        .jump { animation: jump 0.7s ease-out; } 
+        @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-180px); } 100% { transform: translateY(0); } }
+        .jump { animation: jump 0.8s ease-out; } /* Increased duration */
         
         .invincible { animation: flash 0.5s linear infinite; }
         
@@ -344,11 +343,11 @@
         function jump() {
             state.isJumping = true;
             elements.shiba.classList.add('jump');
-            // The duration of the jump animation (0.7s) should match the timeout below
+            // The duration of the jump animation (0.8s) should match the timeout below
             setTimeout(() => {
                 elements.shiba.classList.remove('jump');
                 state.isJumping = false;
-            }, 700); 
+            }, 800); 
         }
 
         function createItem() {
@@ -392,9 +391,12 @@
                 // and hasn't already been marked as collided
                 if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
                     // Collision detection logic
-                    if (shibaRect.right > itemRect.left + (itemRect.width * 0.2) &&
-                        shibaRect.left < itemRect.right - (itemRect.width * 0.2) &&
-                        shibaRect.bottom > itemRect.top + (itemRect.height * 0.2)) {
+                    // Adjusted collision area for more accurate hits (reduced the 0.2 factor slightly)
+                    const collisionOverlapFactor = 0.15; // Smaller value means less overlap required to detect collision
+                    if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
+                        shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
+                        shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
+                        shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
                         item.setAttribute('data-collided', 'true'); // Mark as collided
                         clearTimeout(item.dataset.obstaclePassTimer); // Prevent score increase for this item
