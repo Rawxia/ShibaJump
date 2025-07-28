@@ -576,7 +576,7 @@
             playerLevelDisplay: document.getElementById('player-level'),
             xpBarFill: document.getElementById('xp-bar-fill'),
             xpLevelText: document.getElementById('xp-level-text'),
-            highScoreCrownIcon: document.querySelector('#high-score-container span:first-child') // Select the crown emoji
+            highScoreCrownIcon: document.querySelector('#high-score-container span:first-child') 
         };
 
         const state = {
@@ -597,7 +597,8 @@
             groundHeight: 0, 
             flyingObstacleThreshold: 20,
             currentBiomeIndex: 0, 
-            lastBiomeScore: 0, 
+            lastBiomeChangeScore: 0, // Changed to track last score at which biome changed
+            biomeChangeInterval: 5, // Biome changes every 5 points
             shibaSpinActive: false,
             shibaSpinTimeout: null,
             shibaSpinInterval: null, 
@@ -615,8 +616,7 @@
         };
         
         const EMOJIS = {
-            invincibilityPowerUp: '🍗', // Changed to chicken bone
-            // Theme-specific obstacles
+            invincibilityPowerUp: '🍗', 
             sky: {
                 ground: ['🌳', '🪨', '🌲', '🪵'],
                 flying: ['☁️', '🎈', '🦉']
@@ -880,6 +880,7 @@
         function startGame() {
             state.isGameOver = false;
             state.score = 0;
+            state.lastBiomeChangeScore = 0; // Reset this at game start
             elements.scoreNumber.textContent = state.score; 
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
@@ -1039,10 +1040,11 @@
         }
 
         function checkBiomeChange() {
-            if (state.score > 0 && (state.score % 15 === 0) && (state.score !== state.lastBiomeScore)) { 
-                state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % state.biomeOrder.length;
+            // Biome change every 5 points, and ensure it's not the same score multiple times
+            if (state.score > 0 && (state.score % state.biomeChangeInterval === 0) && (state.score !== state.lastBiomeChangeScore)) { 
+                state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % BIOMES.length; // Use BIOMES.length to cycle through all
                 setBiome(state.biomeOrder[state.biomeCurrentIndexInOrder]);
-                state.lastBiomeScore = state.score;
+                state.lastBiomeChangeScore = state.score;
             }
         }
 
@@ -1054,7 +1056,7 @@
             }
             localStorage.setItem('shibaPlayerXP', state.playerXP);
             localStorage.setItem('shibaPlayerLevel', state.playerLevel);
-            updateXPDisplay(amount); // Pass amount to display XP effect
+            updateXPDisplay(amount); 
         }
 
         function updateXPDisplay(xpGained = 0) {
@@ -1066,14 +1068,13 @@
                 const xpText = document.createElement('span');
                 xpText.classList.add('xp-gain-text');
                 xpText.textContent = `+${xpGained} XP`;
-                // Position it relative to the XP bar
                 const barRect = elements.xpLevelText.getBoundingClientRect();
                 const containerRect = elements.gameContainer.getBoundingClientRect();
 
                 xpText.style.left = `${(barRect.left - containerRect.left) + barRect.width / 2}px`;
-                xpText.style.top = `${(barRect.top - containerRect.top) - 10}px`; // Above the bar
+                xpText.style.top = `${(barRect.top - containerRect.top) - 10}px`; 
 
-                elements.gameWorld.appendChild(xpText); // Append to game world for animation
+                elements.gameWorld.appendChild(xpText); 
                 setTimeout(() => xpText.remove(), 700);
             }
         }
@@ -1117,13 +1118,13 @@
                 state.shibaY = state.groundHeight;
                 state.velocityY = 0;
                 state.isJumping = false; 
-                elements.shiba.style.transform = `translateY(0px) rotate(0deg)`; // Reset rotation
+                elements.shiba.style.transform = `translateY(0px) rotate(0deg)`; 
                 if (state.jumpHoldTimer) {
                     clearTimeout(state.jumpHoldTimer);
                     state.jumpHoldTimer = null;
                 }
-            } else if (state.velocityY > 0) { // Shiba is falling
-                elements.shiba.style.transform = `translateY(0px) rotate(10deg)`; // Tilt down
+            } else if (state.velocityY > 0) { 
+                elements.shiba.style.transform = `translateY(0px) rotate(10deg)`; 
             }
 
 
@@ -1241,9 +1242,9 @@
                 elements.splashHighScore.textContent = state.highScore; 
                 newHighScoreSet = true;
                 addXP(500); 
-                elements.highScoreCrownIcon.classList.add('crown-pop'); // Trigger crown effect
+                elements.highScoreCrownIcon.classList.add('crown-pop'); 
             } else {
-                elements.highScoreCrownIcon.classList.remove('crown-pop'); // Ensure removed if not new high score
+                elements.highScoreCrownIcon.classList.remove('crown-pop'); 
             }
 
             elements.finalScoreDisplay.textContent = state.score;
@@ -1262,6 +1263,7 @@
             document.querySelectorAll('.particle').forEach(el => el.remove());
             document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble, .raindrop').forEach(el => el.remove());
             document.querySelectorAll('.confetti').forEach(el => el.remove());
+            document.querySelectorAll('.xp-gain-text').forEach(el => el.remove()); // Clear any lingering XP texts
 
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
@@ -1269,11 +1271,12 @@
             
             state.isGameOver = true;
             state.score = 0;
+            state.lastBiomeChangeScore = 0; // Reset for new game
             elements.scoreNumber.textContent = 0;
             
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
-            elements.highScoreCrownIcon.classList.remove('crown-pop'); // Reset crown effect
+            elements.highScoreCrownIcon.classList.remove('crown-pop'); 
 
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
