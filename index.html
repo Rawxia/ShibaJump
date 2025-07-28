@@ -158,17 +158,28 @@
             font-size: 60px; 
         }
 
-        #score-container, #high-score-container {
+        /* Score & High Score positions */
+        #score-container {
             position: absolute;
             top: 20px;
+            left: 20px; /* Aligned with XP bar */
+            font-size: 1.5em;
+            font-weight: 700;
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            z-index: 20;
+            margin-top: 35px; /* Space below XP bar */
+        }
+        #high-score-container { 
+            position: absolute;
+            top: 20px;
+            right: 20px; 
             font-size: 1.5em;
             font-weight: 700;
             color: white;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
             z-index: 20;
         }
-        #score-container { right: 140px; } /* Adjusted position */
-        #high-score-container { right: 20px; }
 
         #score #score-number {
             display: inline-block;
@@ -282,6 +293,23 @@
             width: 100%;
             text-align: center;
             line-height: 20px; 
+        }
+        
+        .xp-gain-text {
+            position: absolute;
+            color: #FFD700; /* Gold */
+            font-size: 1em;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            animation: xp-pop-fade 0.7s ease-out forwards;
+            pointer-events: none; /* Make sure it doesn't block clicks */
+            z-index: 102; /* Above XP bar */
+            white-space: nowrap;
+        }
+
+        @keyframes xp-pop-fade {
+            0% { transform: translateY(0px) scale(1); opacity: 1; }
+            100% { transform: translateY(-20px) scale(0.8); opacity: 0; }
         }
 
 
@@ -428,11 +456,23 @@
             100% { transform: scale(1); }
         }
 
+        .crown-pop {
+            animation: crown-bounce 0.8s ease-out;
+        }
+
+        @keyframes crown-bounce {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.3); }
+            50% { transform: scale(0.9); }
+            75% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
         @media (max-width: 600px) {
             :root { --shiba-size: 50px; --obstacle-size: 40px; }
             #game-container { border-radius: 0; height: 100vh; max-height: 100%; }
-            #score-container { font-size: 1em; right: 100px;} /* Adjusted for mobile */
-            #high-score-container { font-size: 1em; right: 10px;} /* Adjusted for mobile */
+            #score-container { font-size: 1em; right: auto; left: 10px; margin-top: 30px;} 
+            #high-score-container { font-size: 1em; right: 10px;} 
             #intro-message h2 { font-size: 1.8em; }
             #intro-message p { font-size: 4em; }
             #game-over-screen h2 { font-size: 2.5em; }
@@ -485,7 +525,7 @@
         <div id="splash-screen">
             <h1>ShibaJump!</h1>
             <p>Tap for longer jumps and get the highest score!</p>
-            <p>Look out for the 🐔 to become invincible!</p>
+            <p>Grab the 🍗 to become invincible!</p>
             <p class="tagline">Can you help Akari find her way?</p>
             <div class="instagram-handle">@sebulique</div>
             <div class="high-score-crown">👑 <span id="splash-high-score">0</span></div>
@@ -535,7 +575,8 @@
             splashHighScore: document.getElementById('splash-high-score'), 
             playerLevelDisplay: document.getElementById('player-level'),
             xpBarFill: document.getElementById('xp-bar-fill'),
-            xpLevelText: document.getElementById('xp-level-text')
+            xpLevelText: document.getElementById('xp-level-text'),
+            highScoreCrownIcon: document.querySelector('#high-score-container span:first-child') // Select the crown emoji
         };
 
         const state = {
@@ -569,12 +610,12 @@
             biomeCurrentIndexInOrder: 0,
             bubbleInterval: null, 
             rainInterval: null,
-            baseGameSpeed: 4, // Initial animation duration for ground/clouds
-            obstacleBaseSpeed: 3.5 // Initial animation duration for obstacles
+            baseGameSpeed: 4, 
+            obstacleBaseSpeed: 3.5 
         };
         
         const EMOJIS = {
-            invincibilityPowerUp: '🐔', 
+            invincibilityPowerUp: '🍗', // Changed to chicken bone
             // Theme-specific obstacles
             sky: {
                 ground: ['🌳', '🪨', '🌲', '🪵'],
@@ -881,6 +922,7 @@
                 e.preventDefault(); 
                 state.isJumping = true;
                 state.velocityY = state.jumpStrength; 
+                elements.shiba.style.transform = `translateY(0px) rotate(-10deg)`; // Tilt up
                 
                 state.jumpHoldTimer = setTimeout(() => {
                     if (state.isJumping) { 
@@ -940,8 +982,8 @@
             
             elements.gameWorld.appendChild(item);
 
-            const speedMultiplier = 1 - (state.score * 0.005); // Faster with higher score, adjust 0.005 for sensitivity
-            let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed * speedMultiplier); // Minimum speed
+            const speedMultiplier = 1 - (state.score * 0.005); 
+            let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed * speedMultiplier); 
             
             if (state.shibaSpinActive) {
                 animationSpeed = Math.max(0.8, animationSpeed * 0.7); 
@@ -967,12 +1009,12 @@
             applyScoreEffect();
             checkConfetti();
             checkBiomeChange(); 
-            checkGameSpeed(); // Check game speed every score update
+            checkGameSpeed(); 
             checkShibaSpin(); 
         }
 
         function checkGameSpeed() {
-            const speedMultiplier = 1 - (state.score * 0.005); // Same multiplier as for obstacles
+            const speedMultiplier = 1 - (state.score * 0.005); 
             const newGroundAnimationDuration = Math.max(2, state.baseGameSpeed * speedMultiplier);
             const newCloudAnimationDuration = Math.max(10, 25 * speedMultiplier);
 
@@ -1012,13 +1054,28 @@
             }
             localStorage.setItem('shibaPlayerXP', state.playerXP);
             localStorage.setItem('shibaPlayerLevel', state.playerLevel);
-            updateXPDisplay();
+            updateXPDisplay(amount); // Pass amount to display XP effect
         }
 
-        function updateXPDisplay() {
+        function updateXPDisplay(xpGained = 0) {
             const xpPercentage = (state.playerXP / state.xpToNextLevel) * 100;
             elements.xpBarFill.style.width = `${xpPercentage}%`;
             elements.xpLevelText.textContent = `Level: ${state.playerLevel}`;
+
+            if (xpGained > 0) {
+                const xpText = document.createElement('span');
+                xpText.classList.add('xp-gain-text');
+                xpText.textContent = `+${xpGained} XP`;
+                // Position it relative to the XP bar
+                const barRect = elements.xpLevelText.getBoundingClientRect();
+                const containerRect = elements.gameContainer.getBoundingClientRect();
+
+                xpText.style.left = `${(barRect.left - containerRect.left) + barRect.width / 2}px`;
+                xpText.style.top = `${(barRect.top - containerRect.top) - 10}px`; // Above the bar
+
+                elements.gameWorld.appendChild(xpText); // Append to game world for animation
+                setTimeout(() => xpText.remove(), 700);
+            }
         }
 
 
@@ -1045,7 +1102,6 @@
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
             elements.shibaSpinMessage.classList.remove('visible');
-            // Wait for transition to complete before hiding display
             setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); 
 
             clearInterval(state.obstacleInterval);
@@ -1061,11 +1117,15 @@
                 state.shibaY = state.groundHeight;
                 state.velocityY = 0;
                 state.isJumping = false; 
+                elements.shiba.style.transform = `translateY(0px) rotate(0deg)`; // Reset rotation
                 if (state.jumpHoldTimer) {
                     clearTimeout(state.jumpHoldTimer);
                     state.jumpHoldTimer = null;
                 }
+            } else if (state.velocityY > 0) { // Shiba is falling
+                elements.shiba.style.transform = `translateY(0px) rotate(10deg)`; // Tilt down
             }
+
 
             elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
@@ -1181,6 +1241,9 @@
                 elements.splashHighScore.textContent = state.highScore; 
                 newHighScoreSet = true;
                 addXP(500); 
+                elements.highScoreCrownIcon.classList.add('crown-pop'); // Trigger crown effect
+            } else {
+                elements.highScoreCrownIcon.classList.remove('crown-pop'); // Ensure removed if not new high score
             }
 
             elements.finalScoreDisplay.textContent = state.score;
@@ -1210,7 +1273,8 @@
             
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
-            
+            elements.highScoreCrownIcon.classList.remove('crown-pop'); // Reset crown effect
+
             state.shibaSpinActive = false;
             elements.body.classList.remove('shiba-spin');
             elements.shibaSpinMessage.style.display = 'none';
