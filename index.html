@@ -296,7 +296,7 @@
             border-radius: 10px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.5);
-            z-index: 101;
+            z-index: 101; /* Ensured it stays on top */
             display: flex; /* Use flexbox */
             justify-content: center; /* Center horizontally */
             align-items: center; /* Center vertically */
@@ -712,6 +712,7 @@
             isInvincible: false,
             gameLoopInterval: null,
             obstacleInterval: null,
+            lastObstacleInterval: 0, // To track and prevent rapid interval changes
             confettiInterval: null, 
             shibaY: 0, 
             velocityY: 0, 
@@ -1119,9 +1120,10 @@
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
-            // Clear existing obstacle interval and set a new one with dynamic speed
+            // Initialize obstacle interval at the start of the game
             if (state.obstacleInterval) clearInterval(state.obstacleInterval);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
+            state.lastObstacleInterval = state.normalObstacleInterval; // Set initial interval value
         }
 
         const handleJumpStart = (e) => {
@@ -1172,7 +1174,7 @@
 
             const randomChance = Math.random();
             const isChickenPowerUp = randomChance < 0.05; // 5% chance for chicken
-            const isToyItem = !isChickenPowerUp && randomChance < 0.25; // If not chicken, 20% chance for toy (total 0.05 + 0.20 = 0.25)
+            const isToyItem = !isChickenPowerUp && randomChance < 0.15; // If not chicken, 10% chance for toy (total 0.05 + 0.10 = 0.15)
 
             let isFlying = Math.random() < 0.5; 
             if (state.score < state.flyingObstacleThreshold) {
@@ -1245,8 +1247,12 @@
 
             // Adjust obstacle creation interval - Make it faster for higher scores
             const newObstacleInterval = Math.max(state.minObstacleInterval, state.normalObstacleInterval / speedFactor);
-            if (state.obstacleInterval) clearInterval(state.obstacleInterval);
-            state.obstacleInterval = setInterval(createItem, newObstacleInterval);
+            // Only update interval if there's a significant change to prevent rapid clearing/setting
+            if (Math.abs(newObstacleInterval - state.lastObstacleInterval) > 50) { // Check for a 50ms difference
+                if (state.obstacleInterval) clearInterval(state.obstacleInterval);
+                state.obstacleInterval = setInterval(createItem, newObstacleInterval);
+                state.lastObstacleInterval = newObstacleInterval;
+            }
         }
 
 
@@ -1376,6 +1382,7 @@
 
         function checkItemPassage() {
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
+            // Only check for passage of 'obstacle' items
             document.querySelectorAll('.obstacle').forEach(item => {
                 // Check if obstacle has passed the shiba and hasn't been scored yet
                 if (item.getBoundingClientRect().right < shibaRect.left && item.dataset.passed === 'false') {
@@ -1392,6 +1399,7 @@
             });
 
             // Clean up power-ups and toys that are far off-screen if not collected
+            // These DO NOT give points for passing, only for direct collision
             document.querySelectorAll('.power-up, .toy-item').forEach(item => {
                 if (item.getBoundingClientRect().right < -50 && item.parentNode) {
                     item.remove();
