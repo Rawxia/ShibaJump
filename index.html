@@ -334,13 +334,17 @@
             pointer-events: none; /* Make sure it doesn't block clicks */
             z-index: 102; /* Above XP bar */
             white-space: nowrap;
+            /* New positioning for central display */
+            top: 15%; /* Adjust as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center horizontally */
         }
 
         @keyframes xp-pop-fade {
-            0% { transform: translateY(0px) scale(0.5); opacity: 0; }
-            20% { transform: translateY(-10px) scale(1.2); opacity: 1; }
-            80% { transform: translateY(-30px) scale(1); opacity: 1; }
-            100% { transform: translateY(-40px) scale(0.8); opacity: 0; }
+            0% { transform: translate(-50%, 0px) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -10px) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -30px) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -40px) scale(0.8); opacity: 0; }
         }
 
 
@@ -1292,17 +1296,12 @@
                 xpText.classList.add('xp-gain-text');
                 xpText.textContent = `+${xpGained} XP`;
                 
-                // Position the XP text relative to the XP bar container
-                const barRect = elements.xpLevelText.getBoundingClientRect();
+                // Position the XP text top middle of the game container
                 const containerRect = elements.gameContainer.getBoundingClientRect();
-
-                // Calculate a random offset around the XP bar for a dynamic feel
-                const offsetX = Math.random() * 40 - 20; // -20 to +20 pixels
-                const offsetY = Math.random() * 10 - 5; // -5 to +5 pixels
-
-                xpText.style.left = `${(barRect.left - containerRect.left) + barRect.width / 2 + offsetX}px`;
-                xpText.style.top = `${(barRect.top - containerRect.top) - 10 + offsetY}px`; 
-
+                xpText.style.top = `${containerRect.height * 0.15}px`; // 15% from the top
+                xpText.style.left = `${containerRect.width / 2}px`;
+                xpText.style.transform = `translateX(-50%)`; // Center horizontally
+                
                 elements.gameWorld.appendChild(xpText); 
                 setTimeout(() => xpText.remove(), 800); // Match animation duration
             }
@@ -1329,7 +1328,7 @@
             elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
             checkCollisions();
-            checkItemPassage(); // New function for checking items passing without collision
+            checkItemPassage(); 
         }
 
         function checkCollisions() {
@@ -1337,33 +1336,39 @@
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
                 const itemRect = item.getBoundingClientRect();
                 
-                if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
-                    const collisionOverlapFactor = 0.15; 
-                    if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
-                        shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
-                        shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
-                        shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
-                        
-                        item.setAttribute('data-collided', 'true');
-                        
-                        if (item.classList.contains('power-up')) { 
+                // Increased collision overlap for more lenient detection
+                const collisionOverlapFactor = 0.25; 
+                if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
+                    shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
+                    shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
+                    shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
+                    
+                    if (item.classList.contains('power-up')) { 
+                        if (!item.hasAttribute('data-collected')) { // Ensure it's only collected once
                             activateInvincibility();
                             item.remove(); 
-                            return; 
-                        } else if (item.classList.contains('toy-item')) {
+                            item.setAttribute('data-collected', 'true');
+                        }
+                        return; 
+                    } else if (item.classList.contains('toy-item')) {
+                        if (!item.hasAttribute('data-collected')) { // Ensure it's only collected once
                             updateScore(10, 150); // Increased score and XP for toys
                             item.remove();
-                            return; 
+                            item.setAttribute('data-collected', 'true');
                         }
-                        // Only if it's an obstacle
-                        else if (item.classList.contains('obstacle')) { 
+                        return; 
+                    }
+                    // Only if it's an obstacle
+                    else if (item.classList.contains('obstacle')) { 
+                        if (!item.hasAttribute('data-collided')) { // Prevent multiple collision triggers
+                            item.setAttribute('data-collided', 'true');
                             if (!state.isInvincible) {
                                 endGame();
                             } else {
                                 item.remove(); 
                             }
-                            return; 
                         }
+                        return; 
                     }
                 }
             });
@@ -1371,17 +1376,23 @@
 
         function checkItemPassage() {
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
-            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // If the item has already passed the shiba and hasn't been scored/removed yet
+            document.querySelectorAll('.obstacle').forEach(item => {
+                // Check if obstacle has passed the shiba and hasn't been scored yet
                 if (item.getBoundingClientRect().right < shibaRect.left && item.dataset.passed === 'false') {
-                    if (item.classList.contains('obstacle')) {
+                    // Make sure it wasn't already marked as collided
+                    if (!item.hasAttribute('data-collided')) { 
                         updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
+                        item.dataset.passed = 'true'; // Mark as passed
                     }
-                    item.dataset.passed = 'true'; // Mark as passed
-                    // Optionally remove item now or let it animate off-screen
-                    // item.remove(); // If you want immediate removal
                 }
                 // Clean up items that are far off-screen
+                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
+                    item.remove();
+                }
+            });
+
+            // Clean up power-ups and toys that are far off-screen if not collected
+            document.querySelectorAll('.power-up, .toy-item').forEach(item => {
                 if (item.getBoundingClientRect().right < -50 && item.parentNode) {
                     item.remove();
                 }
@@ -1457,8 +1468,6 @@
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => {
                 el.style.animationPlayState = 'paused';
-                // No need to clear itemPassTimer here as we've moved scoring
-                // clearTimeout(el.dataset.itemPassTimer); 
             });
             
             document.removeEventListener('keydown', handleJumpStart);
