@@ -88,7 +88,10 @@
             z-index: 10;
         }
 
-        .jump { animation: jump 0.6s ease-out; }
+        /* Adjusted jump animation for higher and longer jump */
+        @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-150px); } 100% { transform: translateY(0); } }
+        .jump { animation: jump 0.7s ease-out; } 
+        
         .invincible { animation: flash 0.5s linear infinite; }
         
         .particle {
@@ -198,7 +201,6 @@
         }
         #game-over-screen a { margin-top: 20px; color: var(--accent-color); text-decoration: none; font-weight: 600; }
 
-        @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-120px); } 100% { transform: translateY(0); } }
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveObstacle { from { left: 100%; } to { left: -100px; } }
@@ -341,10 +343,11 @@
         function jump() {
             state.isJumping = true;
             elements.shiba.classList.add('jump');
+            // The duration of the jump animation (0.7s) should match the timeout below
             setTimeout(() => {
                 elements.shiba.classList.remove('jump');
                 state.isJumping = false;
-            }, 600);
+            }, 700); // Increased from 600ms to match new jump animation
         }
 
         function createItem() {
@@ -361,7 +364,7 @@
 
             // Logic to increase score if obstacle passes without collision
             const obstaclePassTimer = setTimeout(() => {
-                // Check if the item still exists and hasn't been collided with
+                // Check if the item still exists and hasn't been marked as collided
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
                     if (item.classList.contains('obstacle')) { // Only score for obstacles, not power-ups
                         state.score++;
@@ -387,6 +390,7 @@
                 // Only check collision if the item is still visible on screen (approx)
                 // and hasn't already been marked as collided
                 if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
+                    // Collision detection logic
                     if (shibaRect.right > itemRect.left + (itemRect.width * 0.2) &&
                         shibaRect.left < itemRect.right - (itemRect.width * 0.2) &&
                         shibaRect.bottom > itemRect.top + (itemRect.height * 0.2)) {
@@ -398,7 +402,7 @@
                             activatePowerUp();
                             item.remove(); // Remove power-up immediately on collection
                         } else if (!state.isInvincible) {
-                            endGame();
+                            endGame(); // End game only if it's an obstacle AND not invincible
                         }
                     }
                 }
