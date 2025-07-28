@@ -170,6 +170,17 @@
         #score-container { left: 20px; }
         #high-score-container { right: 20px; }
 
+        #score #score-number {
+            display: inline-block;
+            transition: transform 0.1s ease-out, color 0.1s ease-out;
+        }
+
+        /* Score effects */
+        .score-effect-1 { transform: scale(1.2); color: #FFFACD; } /* Lemon Chiffon */
+        .score-effect-2 { transform: rotate(5deg); }
+        .score-effect-3 { transform: translateY(-3px); }
+        .score-effect-4 { color: #ADFF2F; } /* GreenYellow */
+
         #splash-screen, #game-over-screen, #intro-message, #shiba-spin-message {
             position: absolute;
             width: 100%;
@@ -188,10 +199,13 @@
             text-align: center;
         }
         #splash-screen.hidden { transform: translateY(-100%); }
+        
         #splash-screen h1 {
+            font-family: 'Press Start 2P', cursive; /* 8-bit font for title */
             font-size: 4em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            text-shadow: 4px 4px #8B0000, 6px 6px #000; /* Retro shadow */
+            color: #FFD700; /* Gold color */
         }
         #splash-screen p { 
             font-size: 1.2em; 
@@ -199,7 +213,7 @@
             padding: 0 20px;
         }
         #splash-screen .tagline {
-            margin-bottom: 20px; /* Space between tagline and button */
+            margin-bottom: 20px; 
             font-size: 1.5em;
             font-weight: 700;
         }
@@ -344,7 +358,7 @@
             </div>
         </div>
 
-        <div id="score-container"><span>Score: </span><span id="score">0</span></div>
+        <div id="score-container"><span>Score: </span><span id="score"><span id="score-number">0</span></span></div>
         <div id="high-score-container"><span>🏆 </span><span id="high-score">0</span></div>
 
         <div id="splash-screen">
@@ -375,11 +389,12 @@
 
     <script>
         const elements = {
-            shibaContainer: document.getElementById('shiba-container'), // New container
+            shibaContainer: document.getElementById('shiba-container'), 
             shiba: document.getElementById('shiba'),
-            shibaName: document.getElementById('shiba-name'), // New name element
+            shibaName: document.getElementById('shiba-name'), 
             gameWorld: document.getElementById('game-world'),
             scoreDisplay: document.getElementById('score'),
+            scoreNumber: document.getElementById('score-number'), // New element for score animation
             highScoreDisplay: document.getElementById('high-score'),
             splashScreen: document.getElementById('splash-screen'),
             playButton: document.getElementById('play-button'), 
@@ -423,10 +438,16 @@
         };
         
         const EMOJIS = {
-            groundObstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
+            // General obstacles for all biomes, some might be biome-specific logic
+            commonObstacles: ['🌵', '🗿', '🧱', '👾'],
             flyingObstacles: ['✈️', '🚁', '🚀'], 
-            powerUp: '⭐',
-            invincibilityPowerUp: '🐔' 
+            invincibilityPowerUp: '🐔', 
+
+            // Biome-specific emojis
+            skyGroundObstacles: ['🌲', '🌳', '🌴', '🔥', '🪨'],
+            snowGroundObstacles: ['🎄', '⛄', '❄️', '🌨️', '☃️', '🧊'], // Christmas trees and snowballs/ice
+            underwaterGroundObstacles: ['🦀', '🐡', '🐙'], // Lobsters
+            forestGroundObstacles: ['🕷️', '🪵', '🍄'] // Spiders, logs, mushrooms
         };
 
         const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; 
@@ -438,28 +459,54 @@
                 skyColor: "#87CEEB",
                 cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23FFFFFF\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")',
                 groundColor: "#e0e0e0",
-                groundBorderColor: "#ccc"
+                groundBorderColor: "#ccc",
+                groundObstacles: EMOJIS.skyGroundObstacles,
+                specialEffect: null 
             },
             {
                 name: "Desert",
-                skyColor: "#FFD700", /* Gold */
-                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23FFD700\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Yellowish clouds */
-                groundColor: "#F4A460", /* SandyBrown */
-                groundBorderColor: "#CD853F" /* Peru */
+                skyColor: "#FFD700", 
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23FFD700\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', 
+                groundColor: "#F4A460", 
+                groundBorderColor: "#CD853F", 
+                groundObstacles: ['🌵', '🐍', '🏜️'], // Desert-specific
+                specialEffect: null
             },
             {
                 name: "Forest",
-                skyColor: "#8FBC8F", /* DarkSeaGreen */
-                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23ADD8E6\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Light blue clouds */
-                groundColor: "#556B2F", /* DarkOliveGreen */
-                groundBorderColor: "#6B8E23" /* OliveDrab */
+                skyColor: "#8FBC8F", 
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23ADD8E6\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', 
+                groundColor: "#556B2F", 
+                groundBorderColor: "#6B8E23", 
+                groundObstacles: EMOJIS.forestGroundObstacles, // Trees and spiders
+                specialEffect: null
+            },
+            {
+                name: "Snow",
+                skyColor: "#B0E0E6", /* PowderBlue */
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23F0F8FF\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* AliceBlue clouds */
+                groundColor: "#F0F8FF", /* AliceBlue */
+                groundBorderColor: "#D3D3D3", /* LightGrey */
+                groundObstacles: EMOJIS.snowGroundObstacles, // Snowballs, Christmas trees
+                specialEffect: null
+            },
+            {
+                name: "Underwater",
+                skyColor: "#4682B4", /* SteelBlue (for water) */
+                cloudSvg: 'none', /* No clouds underwater */
+                groundColor: "#008B8B", /* DarkCyan (for seabed) */
+                groundBorderColor: "#20B2AA", /* LightSeaGreen */
+                groundObstacles: EMOJIS.underwaterGroundObstacles, // Lobsters
+                specialEffect: 'bubbles' // Special effect for floating bubbles
             },
             {
                 name: "Night",
-                skyColor: "#1A2A3A", /* Dark Blue-Grey */
-                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23778899\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', /* Greyish clouds */
-                groundColor: "#36454F", /* Charcoal */
-                groundBorderColor: "#2F4F4F" /* DarkSlateGrey */
+                skyColor: "#1A2A3A", 
+                cloudSvg: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"250\\" height=\\"250\\" viewBox=\\"0 0 50 50\\"><path fill=\\"%23778899\\" d=\\"M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z\\"/></svg>")', 
+                groundColor: "#36454F", 
+                groundBorderColor: "#2F4F4F", 
+                groundObstacles: EMOJIS.commonObstacles, // Or specific night obstacles
+                specialEffect: null
             }
         ];
 
@@ -471,7 +518,56 @@
             document.documentElement.style.setProperty('--current-cloud-svg', biome.cloudSvg);
             document.documentElement.style.setProperty('--current-ground-color', biome.groundColor);
             document.documentElement.style.setProperty('--current-ground-border-color', biome.groundBorderColor);
+            
+            // Handle clouds visibility
+            elements.clouds.style.display = biome.cloudSvg === 'none' ? 'none' : 'block';
+
+            // Clear existing special effects
+            document.querySelectorAll('.special-effect-bubble').forEach(el => el.remove());
+
+            // Apply new special effects
+            if (biome.specialEffect === 'bubbles') {
+                startBubbleEffect();
+            }
         }
+
+        function startBubbleEffect() {
+            setInterval(() => {
+                if (state.isGameOver) return;
+                const bubble = document.createElement('div');
+                bubble.classList.add('special-effect-bubble');
+                bubble.style.position = 'absolute';
+                bubble.style.width = `${Math.random() * 10 + 5}px`;
+                bubble.style.height = bubble.style.width;
+                bubble.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+                bubble.style.borderRadius = '50%';
+                bubble.style.bottom = `${state.groundHeight}px`; // Start from ground level
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.opacity = 0;
+                bubble.style.animation = `bubble-float ${Math.random() * 8 + 4}s linear forwards`;
+                elements.gameWorld.appendChild(bubble);
+
+                setTimeout(() => bubble.remove(), parseFloat(bubble.style.animationDuration) * 1000); // Remove after animation
+            }, 300); // Create a bubble every 300ms
+        }
+        
+        // CSS for bubbles - add to your <style> block
+        /*
+        @keyframes bubble-float {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateY(-300px) translateX(${Math.random() > 0.5 ? 20 : -20}px); opacity: 0; }
+        }
+        */
+        // Let's integrate it directly into the style for completeness:
+        const styleSheet = document.styleSheets[0];
+        styleSheet.insertRule(`
+            @keyframes bubble-float {
+                0% { transform: translateY(0) translateX(0); opacity: 0; }
+                20% { opacity: 1; }
+                100% { transform: translateY(-300px) translateX(var(--bubble-drift)); opacity: 0; }
+            }
+        `, styleSheet.cssRules.length);
 
 
         function setDynamicGroundHeight() {
@@ -489,7 +585,7 @@
                 el.style.bottom = `${state.groundHeight}px`;
             });
             document.querySelectorAll('.obstacle.flying-type').forEach(el => {
-                el.style.bottom = `calc(${state.groundHeight}px + 100px + ${Math.random() * 50}px)`;
+                el.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; // Adjusted for flying
             });
         }
 
@@ -528,7 +624,7 @@
         function startGame() {
             state.isGameOver = false;
             state.score = 0;
-            elements.scoreDisplay.textContent = state.score;
+            elements.scoreNumber.textContent = state.score; // Use scoreNumber for display
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
             elements.shibaSpinMessage.style.display = 'none'; 
@@ -538,7 +634,7 @@
 
             state.shibaY = state.groundHeight; 
             state.velocityY = 0;
-            elements.shibaContainer.style.bottom = `${state.shibaY}px`; // Use container for positioning
+            elements.shibaContainer.style.bottom = `${state.shibaY}px`; 
             elements.shiba.style.transform = `translateY(0px)`; 
 
             state.currentBiomeIndex = 0;
@@ -552,7 +648,7 @@
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
             
-            document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
@@ -603,19 +699,17 @@
             const item = document.createElement('div');
             
             const randomChance = Math.random();
-            const isStarPowerUp = randomChance < 0.08; 
-            const isChickenPowerUp = randomChance >= 0.08 && randomChance < 0.12; 
+            const isChickenPowerUp = randomChance < 0.05; // 5% chance for chicken
 
-            if (isStarPowerUp) {
-                item.classList.add('power-up');
-                item.textContent = EMOJIS.powerUp;
-                item.style.bottom = `${state.groundHeight + 20}px`; 
-            } else if (isChickenPowerUp) {
+            if (isChickenPowerUp) {
                 item.classList.add('power-up', 'invincibility');
                 item.textContent = EMOJIS.invincibilityPowerUp;
                 item.style.bottom = `${state.groundHeight + 50}px`; 
             }
             else {
+                const currentBiome = BIOMES[state.currentBiomeIndex];
+                const availableGroundObstacles = [...EMOJIS.commonObstacles, ...currentBiome.groundObstacles];
+                
                 const canSpawnFlying = state.score >= state.flyingObstacleThreshold;
                 const isFlyingObstacle = canSpawnFlying && Math.random() < 0.5; 
 
@@ -625,7 +719,7 @@
                     item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
                 } else {
                     item.classList.add('obstacle', 'ground-type');
-                    item.textContent = EMOJIS.groundObstacles[Math.floor(Math.random() * EMOJIS.groundObstacles.length)];
+                    item.textContent = availableGroundObstacles[Math.floor(Math.random() * availableGroundObstacles.length)];
                     item.style.bottom = `${state.groundHeight}px`; 
                 }
             }
@@ -641,10 +735,7 @@
             const obstaclePassTimer = setTimeout(() => {
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
                     if (item.classList.contains('obstacle')) { 
-                        state.score++;
-                        elements.scoreDisplay.textContent = state.score;
-                        checkBiomeChange(); 
-                        checkShibaSpin(); 
+                        updateScore(); 
                     }
                     item.remove();
                 }
@@ -653,8 +744,33 @@
             item.dataset.obstaclePassTimer = obstaclePassTimer;
         }
 
+        function updateScore() {
+            state.score++;
+            elements.scoreNumber.textContent = state.score;
+            applyScoreEffect();
+            checkConfetti();
+            checkBiomeChange(); 
+            checkShibaSpin(); 
+        }
+
+        const scoreEffects = ['score-effect-1', 'score-effect-2', 'score-effect-3', 'score-effect-4'];
+        function applyScoreEffect() {
+            const randomEffect = scoreEffects[Math.floor(Math.random() * scoreEffects.length)];
+            elements.scoreNumber.classList.add(randomEffect);
+            setTimeout(() => {
+                elements.scoreNumber.classList.remove(randomEffect);
+            }, 150); // Duration of the effect
+        }
+
+        function checkConfetti() {
+            if (state.score > 0 && state.score % 10 === 0) {
+                createConfetti();
+            }
+        }
+
         function checkBiomeChange() {
-            if (state.score >= state.lastBiomeScore + 5) {
+            // Change biome every 10 points
+            if (state.score > 0 && (state.score % 10 === 0) && (state.score !== state.lastBiomeScore)) {
                 state.currentBiomeIndex = (state.currentBiomeIndex + 1) % BIOMES.length;
                 setBiome(state.currentBiomeIndex);
                 state.lastBiomeScore = state.score;
@@ -705,14 +821,12 @@
                 }
             }
 
-            // Apply shibaY to shibaContainer
             elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
             checkCollisions();
         }
 
         function checkCollisions() {
-            // Get shibaContainer's rect, as it dictates the effective position of the shiba
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
             document.querySelectorAll('.obstacle, .power-up').forEach(item => {
                 const itemRect = item.getBoundingClientRect();
@@ -729,11 +843,12 @@
                         
                         if (item.classList.contains('invincibility')) { 
                             activateInvincibility();
-                            item.remove();
-                        } else if (item.classList.contains('power-up')) { 
-                            item.remove(); 
+                            item.remove(); // Remove power-up on collision
                         } else if (!state.isInvincible) {
                             endGame();
+                        } else {
+                            // If invincible and it's an obstacle, simply remove it.
+                            item.remove();
                         }
                     }
                 }
@@ -791,7 +906,7 @@
             if (navigator.vibrate) navigator.vibrate(200);
             
             createPoofEffect();
-            elements.shibaContainer.style.display = 'none'; // Hide the container with name and shiba
+            elements.shibaContainer.style.display = 'none'; 
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
@@ -799,7 +914,7 @@
             clearTimeout(state.shibaSpinTimeout); 
             
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
-            document.querySelectorAll('.obstacle, .power-up').forEach(el => {
+            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble').forEach(el => {
                 el.style.animationPlayState = 'paused';
                 clearTimeout(el.dataset.obstaclePassTimer);
             });
@@ -833,16 +948,16 @@
 
         function restartGame() {
             document.querySelectorAll('.particle').forEach(el => el.remove());
-            document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .special-effect-bubble').forEach(el => el.remove());
             document.querySelectorAll('.confetti').forEach(el => el.remove());
 
-            elements.shibaContainer.style.display = 'flex'; // Show the container
+            elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
             
             state.isGameOver = true;
             state.score = 0;
-            elements.scoreDisplay.textContent = 0;
+            elements.scoreNumber.textContent = 0;
             
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
