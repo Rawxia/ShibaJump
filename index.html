@@ -14,7 +14,8 @@
             --shiba-size: 60px;
             --obstacle-size: 50px;
             --sky-color: #87CEEB;
-            --ground-height: 52px; /* Define ground height as a variable */
+            --ground-height-percent: 25%; /* New variable for ground height */
+            --ground-height: 0px; /* Will be calculated by JS */
         }
 
         body {
@@ -51,9 +52,8 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            /* Flexbox for centering content */
             display: flex;
-            justify-content: center; /* Center horizontally */
+            justify-content: center;
             align-items: flex-end; /* Align to the bottom */
         }
         
@@ -71,7 +71,7 @@
 
         #ground {
             width: 200%;
-            height: var(--ground-height); /* Use variable for ground height */
+            height: var(--ground-height); /* Now dynamically set by JS to 25% */
             background: #e0e0e0;
             position: absolute;
             bottom: 0;
@@ -87,8 +87,7 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            /* Centered horizontally, adjusted bottom relative to ground */
-            bottom: var(--ground-height); 
+            bottom: var(--ground-height); /* Position relative to dynamic ground */
             left: calc(50% - (var(--shiba-size) / 2)); 
             transition: transform 0.15s ease-out; 
             z-index: 10;
@@ -109,11 +108,21 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: var(--ground-height); /* Position relative to ground */
             font-size: var(--obstacle-size);
             line-height: 1;
             z-index: 10;
             animation: moveObstacle 3.5s linear;
+        }
+        
+        /* Ground Obstacle */
+        .obstacle.ground-type {
+            bottom: var(--ground-height); /* Aligned with the ground */
+        }
+
+        /* Flying Obstacle (Plane) */
+        .obstacle.flying-type {
+            bottom: calc(var(--ground-height) + 100px); /* Higher up for flying */
+            font-size: 60px; /* Slightly larger emoji for plane */
         }
 
         #score-container, #high-score-container {
@@ -243,7 +252,7 @@
         }
 
         @media (max-width: 600px) {
-            :root { --shiba-size: 50px; --obstacle-size: 40px; --ground-height: 40px; }
+            :root { --shiba-size: 50px; --obstacle-size: 40px; }
             #game-container { border-radius: 0; height: 100vh; max-height: 100%; }
             #score-container, #high-score-container { font-size: 1.2em; }
             #intro-message h2 { font-size: 1.8em; }
@@ -315,22 +324,35 @@
             gameLoopInterval: null,
             obstacleInterval: null,
             confettiInterval: null, 
-            shibaY: 52, // Shiba's current Y position (bottom value) - matches ground-height
+            shibaY: 0, // Shiba's current Y position (bottom value) - will be set dynamically
             velocityY: 0, 
             gravity: 0.8, 
             jumpStrength: -18, 
             maxHoldJumpBoost: -8, 
-            jumpHoldTimer: null 
+            jumpHoldTimer: null,
+            groundHeight: 0, // Store calculated ground height
+            flyingObstacleThreshold: 20 // Score at which flying obstacles start appearing
         };
         
         const EMOJIS = {
-            obstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
+            groundObstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
+            flyingObstacles: ['✈️', '🚁', '🚀'], // New flying obstacles
             powerUp: '⭐'
         };
 
         const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
 
+        function setDynamicGroundHeight() {
+            const gameContainerHeight = elements.gameContainer.clientHeight;
+            // Calculate 25% of gameContainerHeight
+            state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
+            document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
+        }
+
         function init() {
+            setDynamicGroundHeight(); // Calculate and set ground height on init
+            window.addEventListener('resize', setDynamicGroundHeight); // Recalculate on resize
+
             elements.highScoreDisplay.textContent = state.highScore;
             elements.playButton.addEventListener('click', hideSplashAndStart);
             elements.playButton.addEventListener('touchstart', hideSplashAndStart);
@@ -367,16 +389,14 @@
             elements.newHighScoreMessage.style.display = 'none';
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
-            // Reset Shiba position for new game, matching CSS variable
-            state.shibaY = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ground-height')) || 52; 
+            // Reset Shiba position for new game, matching dynamic ground height
+            state.shibaY = state.groundHeight; 
             state.velocityY = 0;
             elements.shiba.style.bottom = `${state.shibaY}px`;
-            elements.shiba.style.transform = `translateY(0px)`; // Ensure no residual transform
+            elements.shiba.style.transform = `translateY(0px)`; 
 
-            // Attach event listeners for jump (keydown/mousedown/touchstart)
             document.addEventListener('keydown', handleJumpStart);
             document.addEventListener('keyup', handleJumpEnd);
-            // Use gameContainer for click/touch events for better mobile usability
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
             elements.gameContainer.addEventListener('touchstart', handleJumpStart);
@@ -388,20 +408,17 @@
             state.obstacleInterval = setInterval(createItem, 2000);
         }
 
-        // Handle jump start (key press or mouse/touch down)
         const handleJumpStart = (e) => {
-            // Only trigger on Spacebar, left click (button 0), or touchstart
-            // If it's a touch event, ensure it's not on a button (like play/restart)
-            const isClickOrTouchOnGameArea = (e.button === 0 && e.target === elements.gameContainer) || 
-                                             (e.type === 'touchstart' && e.target === elements.gameContainer);
+            // Check if it's a keyboard event (Spacebar) OR a mouse/touch event on the game container
+            const isKeyEvent = e.code === 'Space';
+            const isMouseEvent = e.type === 'mousedown' && e.target === elements.gameContainer;
+            const isTouchEvent = e.type === 'touchstart'; // No need for target check here, as it's attached to gameContainer
 
-            if (!state.isGameOver && !state.isJumping && 
-               (e.code === 'Space' || isClickOrTouchOnGameArea)) {
+            if (!state.isGameOver && !state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
                 e.preventDefault(); 
                 state.isJumping = true;
                 state.velocityY = state.jumpStrength; 
                 
-                // Start a timer to apply extra jump if held
                 state.jumpHoldTimer = setTimeout(() => {
                     if (state.isJumping) { 
                         state.velocityY += state.maxHoldJumpBoost; 
@@ -410,14 +427,13 @@
             }
         };
 
-        // Handle jump end (key release or mouse/touch up)
         const handleJumpEnd = (e) => {
-            // Only trigger on Spacebar, left click (button 0), or touchend
-            const isClickOrTouchReleaseOnGameArea = (e.button === 0 && e.target === elements.gameContainer) || 
-                                                     (e.type === 'touchend' && e.target === elements.gameContainer);
+            // Check if it's a keyboard event (Spacebar) OR a mouse/touch event on the game container
+            const isKeyEvent = e.code === 'Space';
+            const isMouseEvent = e.type === 'mouseup' && e.target === elements.gameContainer;
+            const isTouchEvent = e.type === 'touchend'; // No need for target check here
 
-            if (state.isJumping && 
-               (e.code === 'Space' || isClickOrTouchReleaseOnGameArea)) {
+            if (state.isJumping && (isKeyEvent || isMouseEvent || isTouchEvent)) {
                 if (state.jumpHoldTimer) {
                     clearTimeout(state.jumpHoldTimer);
                     state.jumpHoldTimer = null;
@@ -431,10 +447,29 @@
 
         function createItem() {
             if (state.isGameOver) return;
-            const isPowerUp = Math.random() < 0.125;
+            
             const item = document.createElement('div');
-            item.classList.add(isPowerUp ? 'power-up' : 'obstacle');
-            item.textContent = isPowerUp ? EMOJIS.powerUp : EMOJIS.obstacles[Math.floor(Math.random() * EMOJIS.obstacles.length)];
+            const isPowerUp = Math.random() < 0.125; // 1 in 8 chance for power-up
+
+            if (isPowerUp) {
+                item.classList.add('power-up');
+                item.textContent = EMOJIS.powerUp;
+                item.style.bottom = `${state.groundHeight + 20}px`; // Power-up slightly above ground
+            } else {
+                const isFlyingObstacle = state.score >= state.flyingObstacleThreshold && Math.random() < 0.5; // 50% chance for flying if score is high enough
+
+                if (isFlyingObstacle) {
+                    item.classList.add('obstacle', 'flying-type');
+                    item.textContent = EMOJIS.flyingObstacles[Math.floor(Math.random() * EMOJIS.flyingObstacles.length)];
+                    // Position flying obstacles higher
+                    item.style.bottom = `calc(${state.groundHeight}px + 100px + ${Math.random() * 50}px)`; 
+                } else {
+                    item.classList.add('obstacle', 'ground-type');
+                    item.textContent = EMOJIS.groundObstacles[Math.floor(Math.random() * EMOJIS.groundObstacles.length)];
+                    item.style.bottom = `${state.groundHeight}px`; // Ground obstacle
+                }
+            }
+            
             elements.gameWorld.appendChild(item);
 
             const animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
@@ -442,7 +477,7 @@
 
             const obstaclePassTimer = setTimeout(() => {
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
-                    if (item.classList.contains('obstacle')) {
+                    if (item.classList.contains('obstacle')) { // Only score for obstacles
                         state.score++;
                         elements.scoreDisplay.textContent = state.score;
                     }
@@ -454,14 +489,11 @@
         }
 
         function gameLoop() {
-            // Apply gravity
             state.velocityY += state.gravity;
             state.shibaY -= state.velocityY; 
 
-            // Prevent Shiba from going below ground
-            const groundHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ground-height'));
-            if (state.shibaY <= groundHeight) {
-                state.shibaY = groundHeight;
+            if (state.shibaY <= state.groundHeight) {
+                state.shibaY = state.groundHeight;
                 state.velocityY = 0;
                 state.isJumping = false; 
                 if (state.jumpHoldTimer) {
