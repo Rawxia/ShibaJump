@@ -51,8 +51,8 @@
             position: relative;
             overflow: hidden;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: center; 
+            align-items: center; 
             transition: background-color 0.5s ease-in-out; /* Smooth biome transitions */
         }
 
@@ -910,7 +910,7 @@
         }
 
         function startGame() {
-            state.isGameOver = false;
+            state.isGameOver = true; // Set to true initially to prevent immediate collision checks before gameLoop starts properly
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = state.score; 
@@ -939,8 +939,13 @@
             
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => el.remove());
             
+            // Set game speed to initial state
+            elements.ground.style.animationDuration = `${state.baseGameSpeed}s`;
+            elements.clouds.style.animationDuration = `25s`; // Initial cloud speed
+
             state.gameLoopInterval = setInterval(gameLoop, 20);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
+            state.isGameOver = false; // Now set to false
         }
 
         const handleJumpStart = (e) => {
@@ -1029,8 +1034,9 @@
             
             elements.gameWorld.appendChild(item);
 
-            const speedMultiplier = 1 - (state.score * 0.005); 
-            let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed * speedMultiplier); 
+            // Faster speed progression
+            const speedFactor = 1 + (state.score * 0.01); // Increased multiplier for faster speedup
+            let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed / speedFactor); 
             
             item.style.animationDuration = `${animationSpeed}s`;
 
@@ -1044,16 +1050,14 @@
             }
 
 
-            const itemPassTimer = setTimeout(() => {
-                if (item.parentNode && !item.hasAttribute('data-collided')) {
-                    if (item.classList.contains('obstacle')) { 
-                        updateScore(1, 10); // Normal obstacle: 1 score, 10 XP
-                    }
+            // Store the timeout ID on the element itself
+            const itemRemovalTimeout = setTimeout(() => {
+                if (item.parentNode) { 
                     item.remove();
                 }
-            }, animationSpeed * 1000);
+            }, animationSpeed * 1000); 
 
-            item.dataset.itemPassTimer = itemPassTimer;
+            item.dataset.itemRemovalTimeoutId = itemRemovalTimeout; 
         }
 
         function updateScore(scoreAmount = 1, xpAmount = 0) {
@@ -1069,9 +1073,10 @@
         }
 
         function checkGameSpeed() {
-            const speedMultiplier = 1 - (state.score * 0.005); 
-            const newGroundAnimationDuration = Math.max(2, state.baseGameSpeed * speedMultiplier);
-            const newCloudAnimationDuration = Math.max(10, 25 * speedMultiplier);
+            // Faster speed progression for background elements as well
+            const speedFactor = 1 + (state.score * 0.01); 
+            const newGroundAnimationDuration = Math.max(2, state.baseGameSpeed / speedFactor);
+            const newCloudAnimationDuration = Math.max(10, 25 / speedFactor);
 
             elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
             elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
@@ -1156,38 +1161,52 @@
         }
 
         function checkCollisions() {
+            if (state.isGameOver) return; // Prevent collision checks if game is over
+
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                // Ensure item is still in the document and visible on screen
+                if (!item.parentNode || item.offsetLeft < -100) { // Check if off screen to the left
+                    // If it went off-screen without being removed, remove it now.
+                    // This is a failsafe for the "invisible obstacle" bug.
+                    if (item.dataset.itemRemovalTimeoutId) {
+                        clearTimeout(item.dataset.itemRemovalTimeoutId);
+                    }
+                    item.remove();
+                    return; 
+                }
+
                 const itemRect = item.getBoundingClientRect();
                 
-                if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
-                    const collisionOverlapFactor = 0.15; // Adjusted for better accuracy
+                if (!item.hasAttribute('data-collided')) {
+                    const collisionOverlapFactor = 0.15; 
                     if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
                         shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
                         item.setAttribute('data-collided', 'true');
-                        clearTimeout(item.dataset.itemPassTimer);
+                        // Clear the scheduled removal if it's being removed by collision
+                        if (item.dataset.itemRemovalTimeoutId) {
+                            clearTimeout(item.dataset.itemRemovalTimeoutId);
+                        }
                         
                         if (item.classList.contains('power-up')) { 
                             activateInvincibility();
                             item.remove(); 
-                            return; // Stop further checks for this item
+                            return; 
                         } else if (item.classList.contains('toy-item')) {
-                            // Toys do not end the game, they just provide score/XP
-                            updateScore(5, 100); // 5 score, 100 XP for toys
+                            updateScore(5, 100); 
                             item.remove();
-                            return; // Stop further checks for this item
+                            return; 
                         }
-                        // Only if it's an obstacle
                         else if (item.classList.contains('obstacle')) { 
                             if (!state.isInvincible) {
                                 endGame();
                             } else {
-                                item.remove(); // Remove obstacle if invincible
+                                item.remove(); 
                             }
-                            return; // Stop further checks for this item
+                            return; 
                         }
                     }
                 }
@@ -1259,7 +1278,10 @@
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => {
                 el.style.animationPlayState = 'paused';
-                clearTimeout(el.dataset.itemPassTimer); // Renamed from obstaclePassTimer
+                if (el.dataset.itemRemovalTimeoutId) {
+                    clearTimeout(el.dataset.itemRemovalTimeoutId);
+                }
+                el.remove(); // Explicitly remove all items on game over
             });
             
             document.removeEventListener('keydown', handleJumpStart);
@@ -1303,9 +1325,9 @@
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
-            elements.invincibleMessage.classList.remove('visible'); // Ensure message is hidden on restart
+            elements.invincibleMessage.classList.remove('visible'); 
             
-            state.isGameOver = true;
+            state.isGameOver = true; // Ensure game is marked over before starting intro
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = 0;
