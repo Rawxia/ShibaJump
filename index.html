@@ -6,6 +6,8 @@
     <title>Shiba Jump</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap');
+        /* Pixel font for 8-bit text */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
         :root {
             --bg-color: #f7f7f7;
@@ -97,17 +99,33 @@
             animation-duration: 1.5s !important; /* Faster obstacles */
         }
 
+        #shiba-container {
+            position: absolute;
+            bottom: var(--ground-height); 
+            left: calc(50% - (var(--shiba-size) / 2)); 
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         #shiba {
             width: var(--shiba-size);
             height: var(--shiba-size);
             background-image: url('shiba.gif'); 
             background-size: contain;
             background-repeat: no-repeat;
-            position: absolute;
-            bottom: var(--ground-height); 
-            left: calc(50% - (var(--shiba-size) / 2)); 
             transition: transform 0.15s ease-out; 
-            z-index: 10;
+        }
+
+        #shiba-name {
+            font-family: 'Press Start 2P', cursive; /* 8-bit font */
+            font-size: 0.8em; /* Small 8-bit text */
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            position: absolute;
+            top: -25px; /* Position above shiba */
+            white-space: nowrap; /* Prevent text wrapping */
         }
         
         .invincible { animation: flash 0.5s linear infinite; }
@@ -180,6 +198,11 @@
             margin: 0;
             padding: 0 20px;
         }
+        #splash-screen .tagline {
+            margin-bottom: 20px; /* Space between tagline and button */
+            font-size: 1.5em;
+            font-weight: 700;
+        }
 
         #splash-screen button {
             background-color: #fff;
@@ -209,7 +232,7 @@
         #intro-message p { font-size: 5em; margin: 0; font-weight: 700; }
 
         #shiba-spin-message {
-            display: none; /* Hidden by default */
+            display: none; 
             background-color: rgba(255, 255, 255, 0.8);
             color: var(--accent-color);
             font-size: 3em;
@@ -300,6 +323,8 @@
             #game-over-screen h2 { font-size: 2.5em; }
             #splash-screen h1 { font-size: 3em; }
             #splash-screen p { font-size: 1em; }
+            #splash-screen .tagline { font-size: 1.2em; }
+            #shiba-name { font-size: 0.7em; top: -20px;}
             #splash-screen button {
                 padding: 10px 20px;
                 font-size: 1.2em;
@@ -313,7 +338,10 @@
         <div id="game-world">
             <div id="clouds"></div>
             <div id="ground"></div>
-            <div id="shiba"></div>
+            <div id="shiba-container">
+                <span id="shiba-name">Akari</span>
+                <div id="shiba"></div>
+            </div>
         </div>
 
         <div id="score-container"><span>Score: </span><span id="score">0</span></div>
@@ -323,6 +351,7 @@
             <h1>ShibaJump!</h1>
             <p>Tap for longer jumps and get the highest score!</p>
             <p>Look out for the 🐔 to become invincible!</p>
+            <p class="tagline">Can you help Akari find her way?</p>
             <button id="play-button">Play Game</button>
         </div>
         <div id="intro-message">
@@ -346,7 +375,9 @@
 
     <script>
         const elements = {
+            shibaContainer: document.getElementById('shiba-container'), // New container
             shiba: document.getElementById('shiba'),
+            shibaName: document.getElementById('shiba-name'), // New name element
             gameWorld: document.getElementById('game-world'),
             scoreDisplay: document.getElementById('score'),
             highScoreDisplay: document.getElementById('high-score'),
@@ -395,7 +426,7 @@
             groundObstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
             flyingObstacles: ['✈️', '🚁', '🚀'], 
             powerUp: '⭐',
-            invincibilityPowerUp: '🐔' // New emoji for invincibility power-up
+            invincibilityPowerUp: '🐔' 
         };
 
         const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; 
@@ -448,9 +479,10 @@
             state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
             document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
             
+            // Adjust shiba container's position based on new ground height
             if (state.shibaY <= state.groundHeight) {
                 state.shibaY = state.groundHeight;
-                elements.shiba.style.bottom = `${state.shibaY}px`;
+                elements.shibaContainer.style.bottom = `${state.shibaY}px`;
             }
 
             document.querySelectorAll('.obstacle.ground-type, .power-up').forEach(el => {
@@ -506,7 +538,7 @@
 
             state.shibaY = state.groundHeight; 
             state.velocityY = 0;
-            elements.shiba.style.bottom = `${state.shibaY}px`;
+            elements.shibaContainer.style.bottom = `${state.shibaY}px`; // Use container for positioning
             elements.shiba.style.transform = `translateY(0px)`; 
 
             state.currentBiomeIndex = 0;
@@ -515,7 +547,6 @@
 
             document.addEventListener('keydown', handleJumpStart);
             document.addEventListener('keyup', handleJumpEnd);
-            // Attaching touch events directly to gameContainer for universal mobile tap
             elements.gameContainer.addEventListener('touchstart', handleJumpStart, { passive: false });
             elements.gameContainer.addEventListener('touchend', handleJumpEnd, { passive: false });
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
@@ -532,12 +563,10 @@
             const isMouseEvent = e.type === 'mousedown';
             const isTouchEvent = e.type === 'touchstart';
 
-            // Ensure the event target is the game container or a child within it,
-            // but not a button on the splash/game over screen.
             const isGameAreaClick = elements.gameContainer.contains(e.target) && !e.target.closest('button');
 
             if (!state.isGameOver && !state.isJumping && (isKeyEvent || (isGameAreaClick && (isMouseEvent || isTouchEvent)))) {
-                e.preventDefault(); // Prevent default touch behavior (like scrolling)
+                e.preventDefault(); 
                 state.isJumping = true;
                 state.velocityY = state.jumpStrength; 
                 
@@ -573,10 +602,9 @@
             
             const item = document.createElement('div');
             
-            // Randomly decide between normal obstacle, star power-up, or chicken power-up
             const randomChance = Math.random();
-            const isStarPowerUp = randomChance < 0.08; // 8% chance for star
-            const isChickenPowerUp = randomChance >= 0.08 && randomChance < 0.12; // 4% chance for chicken (total 12% for any power-up)
+            const isStarPowerUp = randomChance < 0.08; 
+            const isChickenPowerUp = randomChance >= 0.08 && randomChance < 0.12; 
 
             if (isStarPowerUp) {
                 item.classList.add('power-up');
@@ -585,7 +613,7 @@
             } else if (isChickenPowerUp) {
                 item.classList.add('power-up', 'invincibility');
                 item.textContent = EMOJIS.invincibilityPowerUp;
-                item.style.bottom = `${state.groundHeight + 50}px`; // Chicken might appear slightly higher
+                item.style.bottom = `${state.groundHeight + 50}px`; 
             }
             else {
                 const canSpawnFlying = state.score >= state.flyingObstacleThreshold;
@@ -677,13 +705,15 @@
                 }
             }
 
-            elements.shiba.style.bottom = `${state.shibaY}px`;
+            // Apply shibaY to shibaContainer
+            elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
             checkCollisions();
         }
 
         function checkCollisions() {
-            const shibaRect = elements.shiba.getBoundingClientRect();
+            // Get shibaContainer's rect, as it dictates the effective position of the shiba
+            const shibaRect = elements.shibaContainer.getBoundingClientRect();
             document.querySelectorAll('.obstacle, .power-up').forEach(item => {
                 const itemRect = item.getBoundingClientRect();
                 
@@ -697,12 +727,11 @@
                         item.setAttribute('data-collided', 'true');
                         clearTimeout(item.dataset.obstaclePassTimer);
                         
-                        if (item.classList.contains('invincibility')) { // Check for new invincibility power-up
+                        if (item.classList.contains('invincibility')) { 
                             activateInvincibility();
                             item.remove();
-                        } else if (item.classList.contains('power-up')) { // Existing star power-up
-                            // Current logic for star power-up if any, otherwise just remove it.
-                            item.remove(); // No specific effect for star in current code
+                        } else if (item.classList.contains('power-up')) { 
+                            item.remove(); 
                         } else if (!state.isInvincible) {
                             endGame();
                         }
@@ -717,7 +746,7 @@
             setTimeout(() => {
                 state.isInvincible = false;
                 elements.shiba.classList.remove('invincible');
-            }, 5000); // 5 seconds of invincibility
+            }, 5000); 
         }
         
         function createPoofEffect() {
@@ -762,7 +791,7 @@
             if (navigator.vibrate) navigator.vibrate(200);
             
             createPoofEffect();
-            elements.shiba.style.display = 'none';
+            elements.shibaContainer.style.display = 'none'; // Hide the container with name and shiba
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
@@ -807,7 +836,7 @@
             document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
             document.querySelectorAll('.confetti').forEach(el => el.remove());
 
-            elements.shiba.style.display = 'block';
+            elements.shibaContainer.style.display = 'flex'; // Show the container
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
             
