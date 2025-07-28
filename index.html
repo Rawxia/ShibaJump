@@ -91,14 +91,6 @@
             transition: background 0.5s ease-in-out, border-top-color 0.5s ease-in-out; /* Smooth ground transitions */
         }
         
-        /* Animation speed adjustments for Shiba Spin */
-        body.shiba-spin #ground, body.shiba-spin #clouds {
-            animation-duration: 2s !important; /* Faster ground/clouds */
-        }
-        body.shiba-spin .obstacle, body.shiba-spin .power-up, body.shiba-spin .toy-item {
-            animation-duration: 1.5s !important; /* Faster obstacles */
-        }
-
         #shiba-container {
             position: absolute;
             bottom: var(--ground-height); 
@@ -162,9 +154,9 @@
         .toy-item {
             animation: moveItem 3.5s linear, wiggleToy 1s ease-in-out infinite; 
         }
-        .toy-item.toy1 { background-image: url('toy1.png'); }
-        .toy-item.toy2 { background-image: url('toy2.png'); }
-        .toy-item.toy3 { background-image: url('toy3.png'); }
+        .toy-item.Toy1 { background-image: url('Toy1.png'); }
+        .toy-item.Toy2 { background-image: url('Toy2.png'); }
+        .toy-item.Toy3 { background-image: url('Toy3.png'); }
 
         @keyframes wiggleToy {
             0% { transform: rotate(0deg); }
@@ -208,7 +200,7 @@
         .score-effect-3 { transform: translateY(-3px); }
         .score-effect-4 { color: #ADFF2F; } /* GreenYellow */
 
-        #splash-screen, #game-over-screen, #intro-message, #shiba-spin-message {
+        #splash-screen, #game-over-screen, #intro-message {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -247,6 +239,12 @@
             margin: 8px 0; 
             padding: 0 20px;
             line-height: 1.4; 
+        }
+        #splash-screen .chicken-message {
+            font-size: clamp(1em, 3.5vw, 1.5em); /* Slightly larger */
+            font-weight: bold;
+            color: #FFD700; /* Gold color for visibility */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
         #splash-screen .tagline {
             margin-top: 15px; 
@@ -345,7 +343,7 @@
         }
         #splash-screen button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
         }
         #splash-screen button.clicked {
             animation: button-pop 0.2s ease-out forwards; /* Pop effect */
@@ -359,22 +357,7 @@
         }
         #intro-message h2 { font-size: 2.5em; margin: 0; }
         #intro-message p { font-size: 5em; margin: 0; font-weight: 700; }
-
-        #shiba-spin-message {
-            display: none; 
-            background-color: rgba(255, 255, 255, 0.8);
-            color: var(--accent-color);
-            font-size: 3em;
-            font-weight: 800;
-            text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
-        #shiba-spin-message.visible {
-            opacity: 1;
-        }
-
-
+        
         #game-over-screen {
             display: none;
             background-color: rgba(255, 255, 255, 0.9);
@@ -450,6 +433,28 @@
             100% { transform: translateY(450px); opacity: 0; } /* Adjust 450px based on game container height */
         }
 
+        #invincible-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 2em;
+            color: #FFD700; /* Gold */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            z-index: 100;
+            display: none; /* Controlled by JS */
+            animation: invincibility-pulse 1s infinite alternate;
+            white-space: nowrap; /* Prevent wrapping */
+        }
+        #invincible-message.visible {
+            display: block;
+        }
+        @keyframes invincibility-pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+        }
+
 
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -494,6 +499,7 @@
             #game-over-screen h2 { font-size: 2.5em; }
             #splash-screen h1 { font-size: clamp(2em, 8vw, 3em); } 
             #splash-screen p { font-size: clamp(0.9em, 2.5vw, 1em); }
+            #splash-screen .chicken-message { font-size: clamp(1em, 3vw, 1.3em); }
             #splash-screen .tagline { font-size: clamp(1.2em, 3vw, 1.2em); }
             #shiba-name { font-size: 0.7em; top: -20px;}
             #splash-screen button {
@@ -514,6 +520,9 @@
             }
             #xp-level-text {
                 line-height: 18px;
+            }
+            #invincible-message {
+                font-size: 1.5em;
             }
         }
     </style>
@@ -541,7 +550,7 @@
         <div id="splash-screen">
             <h1>ShibaJump!</h1>
             <p>Tap for longer jumps and get the highest score!</p>
-            <p>Grab the 🍗 to become invincible!</p>
+            <p class="chicken-message">Grab the 🍗 to become invincible!</p>
             <p class="tagline">Can you help Akari find her way?</p>
             <div class="instagram-handle">@sebulique</div>
             <div class="high-score-crown">👑 <span id="splash-high-score">0</span></div>
@@ -552,10 +561,6 @@
             <p id="countdown">3</p>
         </div>
         
-        <div id="shiba-spin-message">
-            <span>Shiba Spin!</span>
-        </div>
-
         <div id="game-over-screen">
             <h2>Game Over</h2>
             <p>Your Score: <span id="final-score">0</span></p>
@@ -564,6 +569,8 @@
             <button onclick="restartGame()">Play Again</button>
             <a href="https://www.instagram.com/sebulique" target="_blank">Visit my Instagram @sebulique</a>
         </div>
+
+        <div id="invincible-message">Invincible!</div>
     </div>
 
     <script>
@@ -586,13 +593,13 @@
             ground: document.getElementById('ground'),
             clouds: document.getElementById('clouds'),
             gameContainer: document.getElementById('game-container'),
-            shibaSpinMessage: document.getElementById('shiba-spin-message'),
             body: document.body,
             splashHighScore: document.getElementById('splash-high-score'), 
             playerLevelDisplay: document.getElementById('player-level'),
             xpBarFill: document.getElementById('xp-bar-fill'),
             xpLevelText: document.getElementById('xp-level-text'),
-            highScoreCrownIcon: document.querySelector('#high-score-container span:first-child') 
+            highScoreCrownIcon: document.querySelector('#high-score-container span:first-child'),
+            invincibleMessage: document.getElementById('invincible-message') 
         };
 
         const state = {
@@ -615,11 +622,7 @@
             currentBiomeIndex: 0, 
             lastBiomeChangeScore: 0, 
             biomeChangeInterval: 5, 
-            shibaSpinActive: false,
-            shibaSpinTimeout: null,
-            shibaSpinInterval: null, 
             normalObstacleInterval: 2000, 
-            shibaSpinObstacleInterval: 1200, 
             playerXP: parseInt(localStorage.getItem('shibaPlayerXP')) || 0,
             playerLevel: parseInt(localStorage.getItem('shibaPlayerLevel')) || 1,
             xpToNextLevel: 1000,
@@ -663,7 +666,7 @@
             }
         };
 
-        const TOY_IMAGES = ['toy1.png', 'toy2.png', 'toy3.png'];
+        const TOY_IMAGES = ['Toy1.png', 'Toy2.png', 'Toy3.png'];
 
         const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f', '#FFD700', '#C0C0C0']; 
 
@@ -902,9 +905,8 @@
             elements.scoreNumber.textContent = state.score; 
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
-            elements.shibaSpinMessage.style.display = 'none'; 
-            elements.body.classList.remove('shiba-spin'); 
             elements.playButton.classList.remove('clicked'); 
+            elements.invincibleMessage.classList.remove('visible'); // Hide message at start
 
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
@@ -977,8 +979,8 @@
             const currentBiome = BIOMES[state.biomeOrder[state.biomeCurrentIndexInOrder]];
 
             const randomChance = Math.random();
-            const isChickenPowerUp = randomChance < 0.05; 
-            const isToyItem = !isChickenPowerUp && randomChance < 0.15; // 10% chance for a toy (0.15 - 0.05)
+            const isChickenPowerUp = randomChance < 0.05; // 5% chance for chicken
+            const isToyItem = !isChickenPowerUp && randomChance < 0.25; // If not chicken, 20% chance for toy (total 0.05 + 0.20 = 0.25)
 
             let isFlying = Math.random() < 0.5; 
             if (state.score < state.flyingObstacleThreshold) {
@@ -993,7 +995,7 @@
             } else if (isToyItem) {
                 item.classList.add('toy-item');
                 const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
-                item.classList.add(randomToy.replace('.png', '')); // Add class like 'toy1'
+                item.classList.add(randomToy.replace('.png', '')); // Add class like 'Toy1'
                 item.style.backgroundImage = `url('${randomToy}')`;
                 if (isFlying) item.classList.add('flying-type');
                 else item.classList.add('ground-type');
@@ -1014,9 +1016,6 @@
             const speedMultiplier = 1 - (state.score * 0.005); 
             let animationSpeed = Math.max(1.5, state.obstacleBaseSpeed * speedMultiplier); 
             
-            if (state.shibaSpinActive) {
-                animationSpeed = Math.max(0.8, animationSpeed * 0.7); 
-            }
             item.style.animationDuration = `${animationSpeed}s`;
 
             if (item.classList.contains('flying-type')) {
@@ -1046,7 +1045,6 @@
             checkConfetti();
             checkBiomeChange(); 
             checkGameSpeed(); 
-            checkShibaSpin(); 
             if (xpAmount > 0) {
                 addXP(xpAmount);
             }
@@ -1116,37 +1114,6 @@
             }
         }
 
-
-        function checkShibaSpin() {
-            if (state.score >= 25 && !state.shibaSpinActive && Math.random() < 0.05) { 
-                activateShibaSpin();
-            }
-        }
-
-        function activateShibaSpin() {
-            state.shibaSpinActive = true;
-            elements.body.classList.add('shiba-spin'); 
-            elements.shibaSpinMessage.style.display = 'flex';
-            elements.shibaSpinMessage.classList.add('visible');
-
-            clearInterval(state.obstacleInterval);
-            state.shibaSpinInterval = setInterval(createItem, state.shibaSpinObstacleInterval * (0.8 + Math.random() * 0.4)); 
-
-            const spinDuration = Math.random() * (10000 - 5000) + 5000; 
-            state.shibaSpinTimeout = setTimeout(deactivateShibaSpin, spinDuration);
-        }
-
-        function deactivateShibaSpin() {
-            state.shibaSpinActive = false;
-            elements.body.classList.remove('shiba-spin');
-            elements.shibaSpinMessage.classList.remove('visible');
-            setTimeout(() => elements.shibaSpinMessage.style.display = 'none', 500); 
-
-            clearInterval(state.obstacleInterval);
-            clearInterval(state.shibaSpinInterval);
-            state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
-        }
-
         function gameLoop() {
             state.velocityY += state.gravity;
             state.shibaY -= state.velocityY; 
@@ -1176,26 +1143,32 @@
                 const itemRect = item.getBoundingClientRect();
                 
                 if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
-                    const collisionOverlapFactor = 0.15;
+                    const collisionOverlapFactor = 0.15; // Adjusted for better accuracy
                     if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
                         shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
                         item.setAttribute('data-collided', 'true');
-                        clearTimeout(item.dataset.itemPassTimer); // Renamed from obstaclePassTimer
+                        clearTimeout(item.dataset.itemPassTimer);
                         
-                        if (item.classList.contains('invincibility')) { 
+                        if (item.classList.contains('power-up')) { 
                             activateInvincibility();
                             item.remove(); 
+                            return; // Stop further checks for this item
                         } else if (item.classList.contains('toy-item')) {
                             updateScore(5, 100); // 5 score, 100 XP for toys
                             item.remove();
+                            return; // Stop further checks for this item
                         }
-                        else if (!state.isInvincible) {
-                            endGame();
-                        } else {
-                            item.remove(); // Remove obstacle if invincible
+                        // Only if it's an obstacle
+                        else if (item.classList.contains('obstacle')) { 
+                            if (!state.isInvincible) {
+                                endGame();
+                            } else {
+                                item.remove(); // Remove obstacle if invincible
+                            }
+                            return; // Stop further checks for this item
                         }
                     }
                 }
@@ -1205,9 +1178,12 @@
         function activateInvincibility() {
             state.isInvincible = true;
             elements.shiba.classList.add('invincible');
+            elements.invincibleMessage.classList.add('visible'); // Show invincible message
+
             setTimeout(() => {
                 state.isInvincible = false;
                 elements.shiba.classList.remove('invincible');
+                elements.invincibleMessage.classList.remove('visible'); // Hide invincible message
             }, 5000); 
         }
         
@@ -1254,11 +1230,10 @@
             
             createPoofEffect();
             elements.shibaContainer.style.display = 'none'; 
+            elements.invincibleMessage.classList.remove('visible'); // Hide invincible message on game over
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
-            clearInterval(state.shibaSpinInterval); 
-            clearTimeout(state.shibaSpinTimeout); 
             if (state.bubbleInterval) clearInterval(state.bubbleInterval);
             if (state.rainInterval) clearInterval(state.rainInterval);
             
@@ -1309,6 +1284,7 @@
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
+            elements.invincibleMessage.classList.remove('visible'); // Ensure message is hidden on restart
             
             state.isGameOver = true;
             state.score = 0;
@@ -1319,11 +1295,6 @@
             elements.newHighScoreMessage.style.display = 'none';
             elements.highScoreCrownIcon.classList.remove('crown-pop'); 
 
-            state.shibaSpinActive = false;
-            elements.body.classList.remove('shiba-spin');
-            elements.shibaSpinMessage.style.display = 'none';
-            clearTimeout(state.shibaSpinTimeout);
-            clearInterval(state.shibaSpinInterval);
             if (state.bubbleInterval) clearInterval(state.bubbleInterval);
             if (state.rainInterval) clearInterval(state.rainInterval);
             
