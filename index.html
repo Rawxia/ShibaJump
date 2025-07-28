@@ -1012,52 +1012,47 @@
             if (isChickenPowerUp) {
                 item.classList.add('power-up');
                 item.textContent = EMOJIS.invincibilityPowerUp;
-                if (isFlying) item.classList.add('flying-type');
-                else item.classList.add('ground-type');
             } else if (isToyItem) {
                 item.classList.add('toy-item');
                 const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
                 item.classList.add(randomToy.replace('.png', '')); // Add class like 'Toy1'
                 item.style.backgroundImage = `url('${randomToy}')`;
-                // Toys retain their specific styles and sizes
-                
-                if (isFlying) item.classList.add('flying-type');
-                else item.classList.add('ground-type');
-            }
-            else {
+                // Toys retain their specific styles and sizes, no textContent needed
+            } else {
                 item.classList.add('obstacle');
+                // For obstacles, explicitly set textContent for emojis
                 if (isFlying) {
-                    item.classList.add('flying-type');
                     item.textContent = currentBiome.flyingObstacles[Math.floor(Math.random() * currentBiome.flyingObstacles.length)];
                 } else {
-                    item.classList.add('ground-type');
                     item.textContent = currentBiome.groundObstacles[Math.floor(Math.random() * currentBiome.groundObstacles.length)];
                 }
             }
             
+            if (isFlying) item.classList.add('flying-type');
+            else item.classList.add('ground-type');
+
             elements.gameWorld.appendChild(item);
 
             // Dynamic speed for items based on score
-            // The higher the score, the higher the speed multiplier
-            const speedMultiplier = 1 + (state.score * 0.01); // Increase speed more aggressively
-            let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier); // Faster base, and minimum speed
+            const speedMultiplier = 1 + (state.score * 0.01); 
+            let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier); 
             
             item.style.animationDuration = `${animationSpeed}s`;
 
             if (item.classList.contains('flying-type')) {
                 item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
-                if (item.classList.contains('toy-item') && item.textContent === '') { // Only apply if it's an image-based toy
+                // Ensure flying toy-items also have correct font-size if they are emojis
+                if (item.classList.contains('toy-item') && item.textContent !== '') { 
                     item.style.fontSize = `var(--obstacle-size)`; 
                 }
             } else {
                 item.style.bottom = `${state.groundHeight}px`; 
             }
 
-
             const itemPassTimer = setTimeout(() => {
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
                     if (item.classList.contains('obstacle')) { 
-                        updateScore(1, 10); // Normal obstacle: 1 score, 10 XP
+                        updateScore(1, 10); 
                     }
                     item.remove();
                 }
