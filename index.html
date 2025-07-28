@@ -14,6 +14,7 @@
             --shiba-size: 60px;
             --obstacle-size: 50px;
             --sky-color: #87CEEB;
+            --ground-height: 52px; /* Define ground height as a variable */
         }
 
         body {
@@ -50,6 +51,10 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            /* Flexbox for centering content */
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: flex-end; /* Align to the bottom */
         }
         
         #clouds {
@@ -66,7 +71,7 @@
 
         #ground {
             width: 200%;
-            height: 52px;
+            height: var(--ground-height); /* Use variable for ground height */
             background: #e0e0e0;
             position: absolute;
             bottom: 0;
@@ -82,15 +87,12 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: 50px;
-            left: 50px;
-            transition: transform 0.3s ease-out;
+            /* Centered horizontally, adjusted bottom relative to ground */
+            bottom: var(--ground-height); 
+            left: calc(50% - (var(--shiba-size) / 2)); 
+            transition: transform 0.15s ease-out; 
             z-index: 10;
         }
-
-        /* Adjusted jump animation for higher and longer jump */
-        @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-180px); } 100% { transform: translateY(0); } }
-        .jump { animation: jump 0.8s ease-out; } /* Increased duration */
         
         .invincible { animation: flash 0.5s linear infinite; }
         
@@ -107,7 +109,7 @@
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            bottom: 50px;
+            bottom: var(--ground-height); /* Position relative to ground */
             font-size: var(--obstacle-size);
             line-height: 1;
             z-index: 10;
@@ -201,6 +203,36 @@
         }
         #game-over-screen a { margin-top: 20px; color: var(--accent-color); text-decoration: none; font-weight: 600; }
 
+        #new-high-score-message {
+            color: var(--accent-color);
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-top: 10px;
+            display: none; 
+            animation: bounceIn 0.8s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #f00; 
+            animation: fall 3s ease-out forwards;
+            opacity: 0;
+            border-radius: 50%; 
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(200vh) rotate(720deg); opacity: 0; }
+        }
+
+
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveObstacle { from { left: 100%; } to { left: -100px; } }
@@ -211,7 +243,7 @@
         }
 
         @media (max-width: 600px) {
-            :root { --shiba-size: 50px; --obstacle-size: 40px; }
+            :root { --shiba-size: 50px; --obstacle-size: 40px; --ground-height: 40px; }
             #game-container { border-radius: 0; height: 100vh; max-height: 100%; }
             #score-container, #high-score-container { font-size: 1.2em; }
             #intro-message h2 { font-size: 1.8em; }
@@ -249,6 +281,7 @@
             <h2>Game Over</h2>
             <p>Your Score: <span id="final-score">0</span></p>
             <p>🏆 Best: <span id="final-high-score">0</span></p>
+            <p id="new-high-score-message">Beat Your Best!</p>
             <button onclick="restartGame()">Play Again</button>
             <a href="https://www.instagram.com/sebulique" target="_blank">Visit my Instagram @sebulique</a>
         </div>
@@ -267,8 +300,10 @@
             gameOverScreen: document.getElementById('game-over-screen'),
             finalScoreDisplay: document.getElementById('final-score'),
             finalHighScoreDisplay: document.getElementById('final-high-score'),
+            newHighScoreMessage: document.getElementById('new-high-score-message'),
             ground: document.getElementById('ground'),
-            clouds: document.getElementById('clouds')
+            clouds: document.getElementById('clouds'),
+            gameContainer: document.getElementById('game-container') 
         };
 
         const state = {
@@ -278,13 +313,22 @@
             isGameOver: true,
             isInvincible: false,
             gameLoopInterval: null,
-            obstacleInterval: null
+            obstacleInterval: null,
+            confettiInterval: null, 
+            shibaY: 52, // Shiba's current Y position (bottom value) - matches ground-height
+            velocityY: 0, 
+            gravity: 0.8, 
+            jumpStrength: -18, 
+            maxHoldJumpBoost: -8, 
+            jumpHoldTimer: null 
         };
         
         const EMOJIS = {
             obstacles: ['🌵', '🌲', '🌳', '🌴', '🗿', '🔥', '🪨', '🧱', '👾'],
             powerUp: '⭐'
         };
+
+        const CONFETTI_COLORS = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
 
         function init() {
             elements.highScoreDisplay.textContent = state.highScore;
@@ -320,39 +364,73 @@
             state.score = 0;
             elements.scoreDisplay.textContent = state.score;
             elements.gameOverScreen.style.display = 'none';
+            elements.newHighScoreMessage.style.display = 'none';
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
-            document.addEventListener('keydown', handleJump);
-            document.addEventListener('touchstart', handleJump);
-            document.addEventListener('mousedown', handleJump);
+            // Reset Shiba position for new game, matching CSS variable
+            state.shibaY = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ground-height')) || 52; 
+            state.velocityY = 0;
+            elements.shiba.style.bottom = `${state.shibaY}px`;
+            elements.shiba.style.transform = `translateY(0px)`; // Ensure no residual transform
+
+            // Attach event listeners for jump (keydown/mousedown/touchstart)
+            document.addEventListener('keydown', handleJumpStart);
+            document.addEventListener('keyup', handleJumpEnd);
+            // Use gameContainer for click/touch events for better mobile usability
+            elements.gameContainer.addEventListener('mousedown', handleJumpStart);
+            elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
+            elements.gameContainer.addEventListener('touchstart', handleJumpStart);
+            elements.gameContainer.addEventListener('touchend', handleJumpEnd);
             
-            // Clear any existing obstacles/power-ups from previous games
             document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
             state.obstacleInterval = setInterval(createItem, 2000);
         }
 
-        const handleJump = (e) => {
-            if (e.code === 'Space' || e.type === 'touchstart' || e.type === 'mousedown') {
-                e.preventDefault();
-                if (!state.isGameOver && !state.isJumping) jump();
+        // Handle jump start (key press or mouse/touch down)
+        const handleJumpStart = (e) => {
+            // Only trigger on Spacebar, left click (button 0), or touchstart
+            // If it's a touch event, ensure it's not on a button (like play/restart)
+            const isClickOrTouchOnGameArea = (e.button === 0 && e.target === elements.gameContainer) || 
+                                             (e.type === 'touchstart' && e.target === elements.gameContainer);
+
+            if (!state.isGameOver && !state.isJumping && 
+               (e.code === 'Space' || isClickOrTouchOnGameArea)) {
+                e.preventDefault(); 
+                state.isJumping = true;
+                state.velocityY = state.jumpStrength; 
+                
+                // Start a timer to apply extra jump if held
+                state.jumpHoldTimer = setTimeout(() => {
+                    if (state.isJumping) { 
+                        state.velocityY += state.maxHoldJumpBoost; 
+                    }
+                }, 50); 
             }
         };
 
-        function jump() {
-            state.isJumping = true;
-            elements.shiba.classList.add('jump');
-            // The duration of the jump animation (0.8s) should match the timeout below
-            setTimeout(() => {
-                elements.shiba.classList.remove('jump');
-                state.isJumping = false;
-            }, 800); 
-        }
+        // Handle jump end (key release or mouse/touch up)
+        const handleJumpEnd = (e) => {
+            // Only trigger on Spacebar, left click (button 0), or touchend
+            const isClickOrTouchReleaseOnGameArea = (e.button === 0 && e.target === elements.gameContainer) || 
+                                                     (e.type === 'touchend' && e.target === elements.gameContainer);
+
+            if (state.isJumping && 
+               (e.code === 'Space' || isClickOrTouchReleaseOnGameArea)) {
+                if (state.jumpHoldTimer) {
+                    clearTimeout(state.jumpHoldTimer);
+                    state.jumpHoldTimer = null;
+                }
+                if (state.velocityY < 0) { 
+                    state.velocityY *= 0.5; 
+                }
+            }
+        };
+
 
         function createItem() {
             if (state.isGameOver) return;
-            // 1 in 8 chance to spawn a power-up
             const isPowerUp = Math.random() < 0.125;
             const item = document.createElement('div');
             item.classList.add(isPowerUp ? 'power-up' : 'obstacle');
@@ -362,23 +440,38 @@
             const animationSpeed = Math.max(2, 3.5 - state.score * 0.02);
             item.style.animationDuration = `${animationSpeed}s`;
 
-            // Logic to increase score if obstacle passes without collision
             const obstaclePassTimer = setTimeout(() => {
-                // Check if the item still exists and hasn't been marked as collided
                 if (item.parentNode && !item.hasAttribute('data-collided')) {
-                    if (item.classList.contains('obstacle')) { // Only score for obstacles, not power-ups
+                    if (item.classList.contains('obstacle')) {
                         state.score++;
                         elements.scoreDisplay.textContent = state.score;
                     }
-                    item.remove(); // Remove the item after it passes
+                    item.remove();
                 }
             }, animationSpeed * 1000);
 
-            // Store the timeout ID to clear it if a collision happens before it fires
             item.dataset.obstaclePassTimer = obstaclePassTimer;
         }
 
         function gameLoop() {
+            // Apply gravity
+            state.velocityY += state.gravity;
+            state.shibaY -= state.velocityY; 
+
+            // Prevent Shiba from going below ground
+            const groundHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ground-height'));
+            if (state.shibaY <= groundHeight) {
+                state.shibaY = groundHeight;
+                state.velocityY = 0;
+                state.isJumping = false; 
+                if (state.jumpHoldTimer) {
+                    clearTimeout(state.jumpHoldTimer);
+                    state.jumpHoldTimer = null;
+                }
+            }
+
+            elements.shiba.style.bottom = `${state.shibaY}px`;
+
             checkCollisions();
         }
 
@@ -387,25 +480,21 @@
             document.querySelectorAll('.obstacle, .power-up').forEach(item => {
                 const itemRect = item.getBoundingClientRect();
                 
-                // Only check collision if the item is still visible on screen (approx)
-                // and hasn't already been marked as collided
                 if (itemRect.right > 0 && !item.hasAttribute('data-collided')) {
-                    // Collision detection logic
-                    // Adjusted collision area for more accurate hits (reduced the 0.2 factor slightly)
-                    const collisionOverlapFactor = 0.15; // Smaller value means less overlap required to detect collision
+                    const collisionOverlapFactor = 0.15;
                     if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
                         shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
                         shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
-                        item.setAttribute('data-collided', 'true'); // Mark as collided
-                        clearTimeout(item.dataset.obstaclePassTimer); // Prevent score increase for this item
+                        item.setAttribute('data-collided', 'true');
+                        clearTimeout(item.dataset.obstaclePassTimer);
                         
                         if (item.classList.contains('power-up')) {
                             activatePowerUp();
-                            item.remove(); // Remove power-up immediately on collection
+                            item.remove();
                         } else if (!state.isInvincible) {
-                            endGame(); // End game only if it's an obstacle AND not invincible
+                            endGame();
                         }
                     }
                 }
@@ -418,7 +507,7 @@
             setTimeout(() => {
                 state.isInvincible = false;
                 elements.shiba.classList.remove('invincible');
-            }, 5000); // 5 seconds of invincibility
+            }, 5000);
         }
         
         function createPoofEffect() {
@@ -436,61 +525,86 @@
             }
         }
 
+        function createConfetti() {
+            const numConfetti = 50;
+            const containerRect = elements.gameContainer.getBoundingClientRect();
+            for (let i = 0; i < numConfetti; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+                confetti.style.left = Math.random() * containerRect.width + 'px';
+                confetti.style.top = (Math.random() * 50 - 100) + 'px'; 
+                confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+                confetti.style.animationDuration = (2 + Math.random() * 1) + 's';
+
+                elements.gameWorld.appendChild(confetti);
+                setTimeout(() => confetti.remove(), parseFloat(confetti.style.animationDuration) * 1000);
+            }
+        }
+
+
         function endGame() {
-            if (state.isGameOver) return; // Prevent multiple calls
+            if (state.isGameOver) return;
             state.isGameOver = true;
             
             if (navigator.vibrate) navigator.vibrate(200);
             
             createPoofEffect();
-            elements.shiba.style.display = 'none'; // Hide Shiba on game over
+            elements.shiba.style.display = 'none';
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
             
-            // Pause all animations
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
             document.querySelectorAll('.obstacle, .power-up').forEach(el => {
                 el.style.animationPlayState = 'paused';
-                // Clear any pending score timers for obstacles that were still moving
                 clearTimeout(el.dataset.obstaclePassTimer);
             });
             
-            // Remove game input listeners
-            document.removeEventListener('keydown', handleJump);
-            document.removeEventListener('touchstart', handleJump);
-            document.removeEventListener('mousedown', handleJump);
+            document.removeEventListener('keydown', handleJumpStart);
+            document.removeEventListener('keyup', handleJumpEnd);
+            elements.gameContainer.removeEventListener('mousedown', handleJumpStart);
+            elements.gameContainer.removeEventListener('mouseup', handleJumpEnd);
+            elements.gameContainer.removeEventListener('touchstart', handleJumpStart);
+            elements.gameContainer.removeEventListener('touchend', handleJumpEnd);
 
-            // Update high score if necessary
+            let newHighScoreSet = false;
             if (state.score > state.highScore) {
                 state.highScore = state.score;
                 localStorage.setItem('shibaHighScore', state.highScore);
                 elements.highScoreDisplay.textContent = state.highScore;
+                newHighScoreSet = true;
             }
 
-            // Display game over screen with scores
             elements.finalScoreDisplay.textContent = state.score;
             elements.finalHighScoreDisplay.textContent = state.highScore;
             elements.gameOverScreen.style.display = 'flex';
+
+            if (newHighScoreSet) {
+                elements.newHighScoreMessage.style.display = 'block';
+                createConfetti();
+            } else {
+                elements.newHighScoreMessage.style.display = 'none';
+            }
         }
 
         function restartGame() {
-            // Clean up old elements and states
             document.querySelectorAll('.particle').forEach(el => el.remove());
             document.querySelectorAll('.obstacle, .power-up').forEach(el => el.remove());
+            document.querySelectorAll('.confetti').forEach(el => el.remove());
 
-            elements.shiba.style.display = 'block'; // Show Shiba again
+            elements.shiba.style.display = 'block';
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
             
-            // Reset game over flag and score
-            state.isGameOver = true; // Set to true temporarily to allow startIntro to reset properly
+            state.isGameOver = true;
             state.score = 0;
             elements.scoreDisplay.textContent = 0;
             
-            elements.gameOverScreen.style.display = 'none'; // Hide game over screen
+            elements.gameOverScreen.style.display = 'none';
+            elements.newHighScoreMessage.style.display = 'none';
             
-            startIntro(); // Start the intro countdown again
+            startIntro();
         }
         
         init();
