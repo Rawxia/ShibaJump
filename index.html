@@ -437,6 +437,21 @@
             100% { transform: translateY(200vh) rotate(720deg); opacity: 0; }
         }
 
+        /* Fire Confetti */
+        .fire-confetti {
+            position: absolute;
+            font-size: 20px; /* Smaller fire emojis */
+            animation: fire-fall 1.5s ease-out forwards;
+            opacity: 0;
+            z-index: 20;
+            pointer-events: none;
+        }
+        @keyframes fire-fall {
+            0% { transform: translateY(-10px) rotate(0deg) scale(0.5); opacity: 1; }
+            100% { transform: translateY(100px) rotate(360deg) scale(1.5); opacity: 0; }
+        }
+
+
         /* Raindrop effect */
         .raindrop {
             position: absolute;
@@ -754,11 +769,13 @@
             snowInterval: null, 
             starInterval: null,
             baseGameSpeed: 3, // Faster base game speed
-            obstacleBaseSpeed: 2.5 // Faster base obstacle speed
+            obstacleBaseSpeed: 2.5, // Faster base obstacle speed
+            toysCollectedInStreak: 0 // New state for fire confetti
         };
         
         const EMOJIS = {
             invincibilityPowerUp: '🍗', 
+            fireConfetti: '🔥', // New fire emoji
             sky: {
                 ground: ['🌳', '🪨', '🌲', '🪵'],
                 flying: ['☁️', '🎈', '🦉']
@@ -803,7 +820,7 @@
                 groundBorderColor: "#ccc",
                 groundObstacles: EMOJIS.sky.ground,
                 flyingObstacles: EMOJIS.sky.flying,
-                specialEffect: null 
+                specialEffect: null // Sky will remain clean
             },
             {
                 name: "Desert",
@@ -893,7 +910,7 @@
             elements.clouds.style.display = biome.cloudSvg === 'none' ? 'none' : 'block';
 
             // Clear all special effects before applying new one
-            document.querySelectorAll('.special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
+            document.querySelectorAll('.special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star, .fire-confetti').forEach(el => el.remove());
             
             clearInterval(state.bubbleInterval);
             clearInterval(state.rainInterval);
@@ -1029,7 +1046,6 @@
             }, 200);
         }
         
-        const styleSheet = document.styleSheets[0];
         // Ensure this rule exists or is added once for bubble-float. Removed duplicate.
 
         function setDynamicGroundHeight() {
@@ -1095,14 +1111,19 @@
         }
 
         function startGame() {
+            state.isGameOver = true; // Set to true initially to ensure all intervals are cleared correctly before starting
+            endGameCleanup(); // Perform cleanup before starting a new game
+            
             state.isGameOver = false;
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
+            state.toysCollectedInStreak = 0; // Reset toy streak
             elements.scoreNumber.textContent = state.score; 
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
             elements.playButton.classList.remove('clicked'); 
             elements.invincibleMessage.classList.remove('visible'); // Hide message at start
+            elements.shibaContainer.style.display = 'flex'; // Ensure shiba is visible
 
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
 
@@ -1122,9 +1143,9 @@
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
             
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
-            
+            if (state.gameLoopInterval) clearInterval(state.gameLoopInterval);
             state.gameLoopInterval = setInterval(gameLoop, 20);
+            
             // Initialize obstacle interval at the start of the game
             if (state.obstacleInterval) clearInterval(state.obstacleInterval);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
@@ -1276,6 +1297,13 @@
             }
         }
 
+        function checkFireConfetti() {
+            if (state.toysCollectedInStreak > 0 && state.toysCollectedInStreak % 5 === 0) {
+                createFireConfetti();
+                state.toysCollectedInStreak = 0; // Reset streak after trigger
+            }
+        }
+
         function checkBiomeChange() {
             if (state.score > 0 && (state.score % state.biomeChangeInterval === 0) && (state.score !== state.lastBiomeChangeScore)) { 
                 state.biomeCurrentIndexInOrder = (state.biomeCurrentIndexInOrder + 1) % BIOMES.length; 
@@ -1348,38 +1376,37 @@
                 const itemRect = item.getBoundingClientRect();
                 
                 // Increased collision overlap for more lenient detection
-                const collisionOverlapFactor = 0.25; 
+                const collisionOverlapFactor = 0.35; // Slightly increased for better toy/power-up pickup feeling
+                
+                // Collision check
                 if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                     shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
                     shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
                     shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                     
-                    if (item.classList.contains('power-up')) { 
-                        if (!item.hasAttribute('data-collected')) { // Ensure it's only collected once
+                    if (!item.hasAttribute('data-collected') && !item.hasAttribute('data-collided')) {
+                        if (item.classList.contains('power-up')) { 
                             activateInvincibility();
                             item.remove(); 
                             item.setAttribute('data-collected', 'true');
-                        }
-                        return; 
-                    } else if (item.classList.contains('toy-item')) {
-                        if (!item.hasAttribute('data-collected')) { // Ensure it's only collected once
+                            state.toysCollectedInStreak = 0; // Reset streak if chicken collected
+                        } else if (item.classList.contains('toy-item')) {
                             updateScore(10, 150); // Increased score and XP for toys
                             item.remove();
                             item.setAttribute('data-collected', 'true');
+                            state.toysCollectedInStreak++; // Increment toy streak
+                            checkFireConfetti(); // Check for fire confetti
                         }
-                        return; 
-                    }
-                    // Only if it's an obstacle
-                    else if (item.classList.contains('obstacle')) { 
-                        if (!item.hasAttribute('data-collided')) { // Prevent multiple collision triggers
+                        // Only obstacles cause game over if not invincible
+                        else if (item.classList.contains('obstacle')) { 
                             item.setAttribute('data-collided', 'true');
                             if (!state.isInvincible) {
                                 endGame();
                             } else {
                                 item.remove(); 
                             }
+                            state.toysCollectedInStreak = 0; // Reset streak if obstacle hit
                         }
-                        return; 
                     }
                 }
             });
@@ -1387,27 +1414,25 @@
 
         function checkItemPassage() {
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
-            // Only check for passage of 'obstacle' items
-            document.querySelectorAll('.obstacle').forEach(item => {
-                // Check if obstacle has passed the shiba and hasn't been scored yet
-                if (item.getBoundingClientRect().right < shibaRect.left && item.dataset.passed === 'false') {
-                    // Make sure it wasn't already marked as collided
-                    if (!item.hasAttribute('data-collided')) { 
-                        updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
-                        item.dataset.passed = 'true'; // Mark as passed
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                // Check if item is off-screen
+                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
+                    // Only obstacles give points for passing
+                    if (item.classList.contains('obstacle') && item.dataset.passed === 'false') {
+                        // Ensure it wasn't already marked as collided (if invincible)
+                        if (!item.hasAttribute('data-collided')) { 
+                            updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
+                            item.dataset.passed = 'true'; // Mark as passed
+                        }
+                    } else if (item.classList.contains('toy-item') || item.classList.contains('power-up')) {
+                        // If toys or power-ups are passed/missed, remove them without scoring
+                        item.remove();
+                        // Reset toy streak if a toy is missed (passes off screen)
+                        if (item.classList.contains('toy-item')) {
+                            state.toysCollectedInStreak = 0;
+                        }
                     }
-                }
-                // Clean up items that are far off-screen
-                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
-                    item.remove();
-                }
-            });
-
-            // Clean up power-ups and toys that are far off-screen if not collected
-            // These DO NOT give points for passing, only for direct collision
-            document.querySelectorAll('.power-up, .toy-item').forEach(item => {
-                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
-                    item.remove();
+                    item.remove(); // Remove all types of items once they go off screen
                 }
             });
         }
@@ -1458,17 +1483,26 @@
             }
         }
 
+        function createFireConfetti() {
+            const numFireConfetti = 30; // Fewer, but more impactful
+            const containerRect = elements.gameContainer.getBoundingClientRect();
+            for (let i = 0; i < numFireConfetti; i++) {
+                const fireConfetti = document.createElement('div');
+                fireConfetti.classList.add('fire-confetti');
+                fireConfetti.textContent = EMOJIS.fireConfetti;
+                fireConfetti.style.left = Math.random() * containerRect.width + 'px';
+                fireConfetti.style.top = (Math.random() * -containerRect.height / 3) + 'px'; // Start higher
+                fireConfetti.style.animationDelay = (Math.random() * 0.5) + 's';
+                fireConfetti.style.animationDuration = (1 + Math.random() * 0.5) + 's'; // Faster animation
+                fireConfetti.style.transform = `rotate(${Math.random() * 360}deg)`;
 
-        function endGame() {
-            if (state.isGameOver) return;
-            state.isGameOver = true;
-            
-            if (navigator.vibrate) navigator.vibrate(200);
-            
-            createPoofEffect();
-            elements.shibaContainer.style.display = 'none'; 
-            elements.invincibleMessage.classList.remove('visible'); 
+                elements.gameWorld.appendChild(fireConfetti);
+                setTimeout(() => fireConfetti.remove(), parseFloat(fireConfetti.style.animationDuration) * 1000 + parseFloat(fireConfetti.style.animationDelay) * 1000);
+            }
+        }
 
+
+        function endGameCleanup() {
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
             
@@ -1480,8 +1514,11 @@
             clearInterval(state.snowInterval);
             clearInterval(state.starInterval);
 
+            // Remove all dynamic elements from the DOM
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star, .confetti, .fire-confetti, .xp-gain-text, .particle').forEach(el => el.remove());
+
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => {
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(el => {
                 el.style.animationPlayState = 'paused';
             });
             
@@ -1491,6 +1528,19 @@
             elements.gameContainer.removeEventListener('touchend', handleJumpEnd);
             elements.gameContainer.removeEventListener('mousedown', handleJumpStart);
             elements.gameContainer.removeEventListener('mouseup', handleJumpEnd);
+        }
+
+        function endGame() {
+            if (state.isGameOver) return;
+            state.isGameOver = true;
+            
+            if (navigator.vibrate) navigator.vibrate(200);
+            
+            createPoofEffect();
+            elements.shibaContainer.style.display = 'none'; 
+            elements.invincibleMessage.classList.remove('visible'); 
+            
+            endGameCleanup(); // Call the cleanup function
 
             let newHighScoreSet = false;
             if (state.score > state.highScore) {
@@ -1518,17 +1568,14 @@
         }
 
         function restartGame() {
-            document.querySelectorAll('.particle').forEach(el => el.remove());
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
-            document.querySelectorAll('.confetti').forEach(el => el.remove());
-            document.querySelectorAll('.xp-gain-text').forEach(el => el.remove()); 
-
+            endGameCleanup(); // Ensure all elements and intervals are reset
+            
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
             elements.invincibleMessage.classList.remove('visible'); 
             
-            state.isGameOver = true;
+            state.isGameOver = true; // Set to true to allow startGame to reset properly
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = 0;
@@ -1537,18 +1584,10 @@
             elements.newHighScoreMessage.style.display = 'none';
             elements.highScoreCrownIcon.classList.remove('crown-pop'); 
 
-            clearInterval(state.bubbleInterval);
-            clearInterval(state.rainInterval);
-            clearInterval(state.leafInterval);
-            clearInterval(state.dustInterval);
-            clearInterval(state.snowInterval);
-            clearInterval(state.starInterval);
-            
             elements.playButton.style.animation = 'wiggle 2s infinite ease-in-out'; 
             elements.playButton.classList.remove('clicked');
 
-
-            startIntro();
+            startIntro(); // Restart the game from the intro countdown
         }
         
         init();
