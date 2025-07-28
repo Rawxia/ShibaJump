@@ -297,15 +297,20 @@
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.5);
             z-index: 101;
-            display: flex;
-            align-items: center;
+            display: flex; /* Use flexbox */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
             font-family: 'Press Start 2P', cursive;
             font-size: 0.7em;
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            white-space: nowrap; /* Prevent text wrapping */
         }
 
         #xp-bar-fill {
+            position: absolute; /* Keep fill absolute */
+            left: 0;
+            top: 0;
             height: 100%;
             width: 0%;
             background-color: #ADD8E6; /* Light Blue XP */
@@ -314,27 +319,28 @@
         }
 
         #xp-level-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            line-height: 20px; 
+            position: relative; /* Make text relative to the flex container */
+            z-index: 1; /* Ensure text is above the fill */
         }
         
         .xp-gain-text {
             position: absolute;
             color: #FFD700; /* Gold */
-            font-size: 1em;
+            font-family: 'Press Start 2P', cursive; /* Use 8-bit font */
+            font-size: 1.2em; /* Larger size */
             font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-            animation: xp-pop-fade 0.7s ease-out forwards;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8); /* More prominent shadow */
+            animation: xp-pop-fade 0.8s ease-out forwards; /* Longer duration and new animation */
             pointer-events: none; /* Make sure it doesn't block clicks */
             z-index: 102; /* Above XP bar */
-            white-content: nowrap;
+            white-space: nowrap;
         }
 
         @keyframes xp-pop-fade {
-            0% { transform: translateY(0px) scale(1); opacity: 1; }
-            100% { transform: translateY(-20px) scale(0.8); opacity: 0; }
+            0% { transform: translateY(0px) scale(0.5); opacity: 0; }
+            20% { transform: translateY(-10px) scale(1.2); opacity: 1; }
+            80% { transform: translateY(-30px) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(0.8); opacity: 0; }
         }
 
 
@@ -466,6 +472,74 @@
             100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
         }
 
+        /* New Biome Effects CSS */
+        .leaf {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background-color: #8B4513; /* SaddleBrown */
+            border-radius: 0 50% 50% 50%; /* Leaf shape */
+            transform: rotate(var(--rotation, 0deg));
+            opacity: 0;
+            animation: leaf-fall var(--duration) linear var(--delay) forwards;
+            z-index: 5;
+            pointer-events: none;
+        }
+        @keyframes leaf-fall {
+            0% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); opacity: 1; }
+            100% { transform: translateY(calc(100vh + 50px)) rotate(calc(var(--rotation, 0deg) + 360deg)); opacity: 0; }
+        }
+
+        .dust-particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background-color: rgba(255, 228, 181, 0.7); /* Moccasin, semi-transparent */
+            border-radius: 50%;
+            opacity: 0;
+            animation: sand-drift var(--duration) linear var(--delay) forwards;
+            z-index: 5;
+            pointer-events: none;
+        }
+        @keyframes sand-drift {
+            0% { transform: translateX(0) translateY(0); opacity: 0; }
+            20% { opacity: 0.8; }
+            100% { transform: translateX(var(--drift-x)) translateY(var(--drift-y)); opacity: 0; }
+        }
+
+        .snowflake {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: snow-fall var(--duration) linear var(--delay) infinite;
+            z-index: 5;
+            pointer-events: none;
+        }
+        @keyframes snow-fall {
+            0% { transform: translateY(-10px) translateX(0px); opacity: 0.8; }
+            100% { transform: translateY(450px) translateX(var(--drift-x)); opacity: 0; }
+        }
+
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background-color: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: star-twinkle var(--duration) ease-in-out infinite alternate;
+            z-index: 5;
+            pointer-events: none;
+            box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.5); /* Glowing effect */
+        }
+        @keyframes star-twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
 
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -530,7 +604,9 @@
                 top: 10px;
                 left: 10px;
             }
+            /* Remove absolute positioning for text inside flex container */
             #xp-level-text {
+                position: relative; 
                 line-height: 18px;
             }
             #invincible-message {
@@ -541,6 +617,9 @@
                 width: 60px; /* Slightly smaller for mobile */
                 height: 60px;
                 font-size: 60px;
+            }
+            .xp-gain-text {
+                font-size: 1em; /* Smaller on mobile */
             }
         }
     </style>
@@ -650,6 +729,10 @@
             biomeCurrentIndexInOrder: 0,
             bubbleInterval: null, 
             rainInterval: null,
+            leafInterval: null, 
+            dustInterval: null, 
+            snowInterval: null, 
+            starInterval: null,
             baseGameSpeed: 3, // Faster base game speed
             obstacleBaseSpeed: 2.5 // Faster base obstacle speed
         };
@@ -670,7 +753,7 @@
             },
             snow: {
                 ground: ['🎄', '⛄', '🧊', '🛷'], 
-                flying: ['❄️', '🌨️', '🌬️']
+                flying: ['❄️', '🌨️', '🌬️'] 
             },
             underwater: {
                 ground: ['🦀', '🐡', '🐙', '🐚'], 
@@ -710,7 +793,7 @@
                 groundBorderColor: "#CD853F", 
                 groundObstacles: EMOJIS.desert.ground,
                 flyingObstacles: EMOJIS.desert.flying,
-                specialEffect: null
+                specialEffect: 'dust'
             },
             {
                 name: "Forest",
@@ -720,7 +803,7 @@
                 groundBorderColor: "#6B8E23", 
                 groundObstacles: EMOJIS.forest.ground,
                 flyingObstacles: EMOJIS.forest.flying,
-                specialEffect: null
+                specialEffect: 'leaves'
             },
             {
                 name: "Snow",
@@ -730,7 +813,7 @@
                 groundBorderColor: "#D3D3D3", 
                 groundObstacles: EMOJIS.snow.ground,
                 flyingObstacles: EMOJIS.snow.flying,
-                specialEffect: null
+                specialEffect: 'snow'
             },
             {
                 name: "Underwater",
@@ -750,7 +833,7 @@
                 groundBorderColor: "#2F4F4F", 
                 groundObstacles: EMOJIS.night.ground,
                 flyingObstacles: EMOJIS.night.flying,
-                specialEffect: null
+                specialEffect: 'stars'
             },
             {
                 name: "Rainy Forest",
@@ -789,16 +872,29 @@
             
             elements.clouds.style.display = biome.cloudSvg === 'none' ? 'none' : 'block';
 
-            document.querySelectorAll('.special-effect-bubble').forEach(el => el.remove());
-            document.querySelectorAll('.raindrop').forEach(el => el.remove());
-            if (state.bubbleInterval) clearInterval(state.bubbleInterval);
-            if (state.rainInterval) clearInterval(state.rainInterval);
+            // Clear all special effects before applying new one
+            document.querySelectorAll('.special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
+            
+            clearInterval(state.bubbleInterval);
+            clearInterval(state.rainInterval);
+            clearInterval(state.leafInterval);
+            clearInterval(state.dustInterval);
+            clearInterval(state.snowInterval);
+            clearInterval(state.starInterval);
 
 
             if (biome.specialEffect === 'bubbles') {
                 startBubbleEffect();
             } else if (biome.specialEffect === 'rain') {
                 startRainEffect();
+            } else if (biome.specialEffect === 'leaves') {
+                startLeafEffect();
+            } else if (biome.specialEffect === 'dust') {
+                startDustEffect();
+            } else if (biome.specialEffect === 'snow') {
+                startSnowEffect();
+            } else if (biome.specialEffect === 'stars') {
+                startStarEffect();
             }
         }
 
@@ -844,6 +940,76 @@
 
                 setTimeout(() => raindrop.remove(), parseFloat(raindrop.style.animationDuration) * 1000 + parseFloat(raindrop.style.animationDelay) * 1000);
             }, 50); 
+        }
+
+        function startLeafEffect() {
+            state.leafInterval = setInterval(() => {
+                if (state.isGameOver) {
+                    clearInterval(state.leafInterval);
+                    return;
+                }
+                const leaf = document.createElement('div');
+                leaf.classList.add('leaf');
+                leaf.style.left = `${Math.random() * 100}%`;
+                leaf.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
+                leaf.style.setProperty('--delay', `${Math.random() * 2}s`);
+                leaf.style.setProperty('--rotation', `${Math.random() * 360}deg`);
+                elements.gameWorld.appendChild(leaf);
+                setTimeout(() => leaf.remove(), parseFloat(leaf.style.animationDuration) * 1000 + parseFloat(leaf.style.animationDelay) * 1000);
+            }, 150);
+        }
+
+        function startDustEffect() {
+            state.dustInterval = setInterval(() => {
+                if (state.isGameOver) {
+                    clearInterval(state.dustInterval);
+                    return;
+                }
+                const dust = document.createElement('div');
+                dust.classList.add('dust-particle');
+                dust.style.left = `${Math.random() * 100}%`;
+                dust.style.bottom = `${state.groundHeight + Math.random() * 20}px`; /* Near ground */
+                dust.style.setProperty('--duration', `${Math.random() * 3 + 1}s`);
+                dust.style.setProperty('--delay', `${Math.random() * 1}s`);
+                dust.style.setProperty('--drift-x', `${Math.random() * 100 - 50}px`); /* Horizontal drift */
+                dust.style.setProperty('--drift-y', `${Math.random() * -50}px`); /* Upward drift */
+                elements.gameWorld.appendChild(dust);
+                setTimeout(() => dust.remove(), parseFloat(dust.style.animationDuration) * 1000 + parseFloat(dust.style.animationDelay) * 1000);
+            }, 100);
+        }
+
+        function startSnowEffect() {
+            state.snowInterval = setInterval(() => {
+                if (state.isGameOver) {
+                    clearInterval(state.snowInterval);
+                    return;
+                }
+                const snowflake = document.createElement('div');
+                snowflake.classList.add('snowflake');
+                snowflake.style.left = `${Math.random() * 100}%`;
+                snowflake.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
+                snowflake.style.setProperty('--delay', `${Math.random() * 2}s`);
+                snowflake.style.setProperty('--drift-x', `${Math.random() * 50 - 25}px`); 
+                elements.gameWorld.appendChild(snowflake);
+                setTimeout(() => snowflake.remove(), parseFloat(snowflake.style.animationDuration) * 1000 + parseFloat(snowflake.style.animationDelay) * 1000);
+            }, 80);
+        }
+
+        function startStarEffect() {
+            state.starInterval = setInterval(() => {
+                if (state.isGameOver) {
+                    clearInterval(state.starInterval);
+                    return;
+                }
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * (elements.gameContainer.clientHeight - state.groundHeight - 50)}px`; /* Avoid ground */
+                star.style.setProperty('--duration', `${Math.random() * 3 + 1.5}s`);
+                star.style.setProperty('--delay', `${Math.random() * 2}s`);
+                elements.gameWorld.appendChild(star);
+                setTimeout(() => star.remove(), parseFloat(star.style.animationDuration) * 1000 + parseFloat(star.style.animationDelay) * 1000);
+            }, 200);
         }
         
         const styleSheet = document.styleSheets[0];
@@ -946,7 +1112,7 @@
             elements.gameContainer.addEventListener('mousedown', handleJumpStart);
             elements.gameContainer.addEventListener('mouseup', handleJumpEnd);
             
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
             
             state.gameLoopInterval = setInterval(gameLoop, 20);
             // Clear existing obstacle interval and set a new one with dynamic speed
@@ -1049,16 +1215,7 @@
                 item.style.bottom = `${state.groundHeight}px`; 
             }
 
-            const itemPassTimer = setTimeout(() => {
-                if (item.parentNode && !item.hasAttribute('data-collided')) {
-                    if (item.classList.contains('obstacle')) { 
-                        updateScore(1, 10); 
-                    }
-                    item.remove();
-                }
-            }, animationSpeed * 1000);
-
-            item.dataset.itemPassTimer = itemPassTimer;
+            item.dataset.passed = 'false'; // Track if this item has been passed
         }
 
         function updateScore(scoreAmount = 1, xpAmount = 0) {
@@ -1082,7 +1239,7 @@
             elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
             elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
 
-            // Adjust obstacle creation interval
+            // Adjust obstacle creation interval - Make it faster for higher scores
             const newObstacleInterval = Math.max(state.minObstacleInterval, state.normalObstacleInterval / speedFactor);
             if (state.obstacleInterval) clearInterval(state.obstacleInterval);
             state.obstacleInterval = setInterval(createItem, newObstacleInterval);
@@ -1128,20 +1285,26 @@
         function updateXPDisplay(xpGained = 0) {
             const xpPercentage = (state.playerXP / state.xpToNextLevel) * 100;
             elements.xpBarFill.style.width = `${xpPercentage}%`;
-            elements.xpLevelText.textContent = `Level: ${state.playerLevel}`;
+            elements.playerLevelDisplay.textContent = state.playerLevel; // Update the inner span
 
             if (xpGained > 0) {
                 const xpText = document.createElement('span');
                 xpText.classList.add('xp-gain-text');
                 xpText.textContent = `+${xpGained} XP`;
+                
+                // Position the XP text relative to the XP bar container
                 const barRect = elements.xpLevelText.getBoundingClientRect();
                 const containerRect = elements.gameContainer.getBoundingClientRect();
 
-                xpText.style.left = `${(barRect.left - containerRect.left) + barRect.width / 2}px`;
-                xpText.style.top = `${(barRect.top - containerRect.top) - 10}px`; 
+                // Calculate a random offset around the XP bar for a dynamic feel
+                const offsetX = Math.random() * 40 - 20; // -20 to +20 pixels
+                const offsetY = Math.random() * 10 - 5; // -5 to +5 pixels
+
+                xpText.style.left = `${(barRect.left - containerRect.left) + barRect.width / 2 + offsetX}px`;
+                xpText.style.top = `${(barRect.top - containerRect.top) - 10 + offsetY}px`; 
 
                 elements.gameWorld.appendChild(xpText); 
-                setTimeout(() => xpText.remove(), 700);
+                setTimeout(() => xpText.remove(), 800); // Match animation duration
             }
         }
 
@@ -1166,6 +1329,7 @@
             elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
             checkCollisions();
+            checkItemPassage(); // New function for checking items passing without collision
         }
 
         function checkCollisions() {
@@ -1181,7 +1345,6 @@
                         shibaRect.top < itemRect.bottom - (itemRect.height * collisionOverlapFactor)) {
                         
                         item.setAttribute('data-collided', 'true');
-                        clearTimeout(item.dataset.itemPassTimer);
                         
                         if (item.classList.contains('power-up')) { 
                             activateInvincibility();
@@ -1202,6 +1365,25 @@
                             return; 
                         }
                     }
+                }
+            });
+        }
+
+        function checkItemPassage() {
+            const shibaRect = elements.shibaContainer.getBoundingClientRect();
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                // If the item has already passed the shiba and hasn't been scored/removed yet
+                if (item.getBoundingClientRect().right < shibaRect.left && item.dataset.passed === 'false') {
+                    if (item.classList.contains('obstacle')) {
+                        updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
+                    }
+                    item.dataset.passed = 'true'; // Mark as passed
+                    // Optionally remove item now or let it animate off-screen
+                    // item.remove(); // If you want immediate removal
+                }
+                // Clean up items that are far off-screen
+                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
+                    item.remove();
                 }
             });
         }
@@ -1265,13 +1447,18 @@
 
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
-            if (state.bubbleInterval) clearInterval(state.bubbleInterval);
-            if (state.rainInterval) clearInterval(state.rainInterval);
+            clearInterval(state.bubbleInterval);
+            clearInterval(state.rainInterval);
+            clearInterval(state.leafInterval);
+            clearInterval(state.dustInterval);
+            clearInterval(state.snowInterval);
+            clearInterval(state.starInterval);
             
             ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => {
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => {
                 el.style.animationPlayState = 'paused';
-                clearTimeout(el.dataset.itemPassTimer); 
+                // No need to clear itemPassTimer here as we've moved scoring
+                // clearTimeout(el.dataset.itemPassTimer); 
             });
             
             document.removeEventListener('keydown', handleJumpStart);
@@ -1308,7 +1495,7 @@
 
         function restartGame() {
             document.querySelectorAll('.particle').forEach(el => el.remove());
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop').forEach(el => el.remove());
+            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star').forEach(el => el.remove());
             document.querySelectorAll('.confetti').forEach(el => el.remove());
             document.querySelectorAll('.xp-gain-text').forEach(el => el.remove()); 
 
@@ -1326,8 +1513,12 @@
             elements.newHighScoreMessage.style.display = 'none';
             elements.highScoreCrownIcon.classList.remove('crown-pop'); 
 
-            if (state.bubbleInterval) clearInterval(state.bubbleInterval);
-            if (state.rainInterval) clearInterval(state.rainInterval);
+            clearInterval(state.bubbleInterval);
+            clearInterval(state.rainInterval);
+            clearInterval(state.leafInterval);
+            clearInterval(state.dustInterval);
+            clearInterval(state.snowInterval);
+            clearInterval(state.starInterval);
             
             elements.playButton.style.animation = 'wiggle 2s infinite ease-in-out'; 
             elements.playButton.classList.remove('clicked');
