@@ -13,6 +13,7 @@
             --bg-color: #f7f7f7;
             --text-color: #333;
             --accent-color: #ff6347;
+            /* Dynamic sizes, will be set by JS */
             --shiba-size: 60px;
             --obstacle-size: 50px;
             --ground-height-percent: 25%;
@@ -41,10 +42,11 @@
         }
 
         #game-container {
-            width: 100%;
+            /* Dynamic sizing for better desktop scaling */
+            width: 90vw; /* Use viewport width */
             max-width: 800px;
-            height: 100vh;
-            max-height: 400px;
+            height: 60vh; /* Use viewport height */
+            max-height: 400px; /* Still have a max height for very large screens */
             border-radius: 20px;
             background: var(--current-sky-color); /* Use biome color */
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -138,7 +140,8 @@
             font-size: var(--obstacle-size);
             line-height: 1;
             z-index: 10;
-            animation: moveItem 3.5s linear;
+            /* Animation set dynamically by JS, but keeping it here as a fallback/reference */
+            animation: moveItem 3.5s linear; 
         }
         
         .obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type {
@@ -152,10 +155,10 @@
 
         /* Toy specific styles */
         .toy-item {
-            width: 70px; /* Make toys bigger */
-            height: 70px; /* Make toys bigger */
+            width: var(--toy-size); /* Use dynamic toy size */
+            height: var(--toy-size); /* Use dynamic toy size */
             animation: moveItem 3.5s linear, wiggleToy 1s ease-in-out infinite; 
-            font-size: 70px; /* Ensure emoji toys are big too */
+            font-size: var(--toy-size); /* Ensure emoji toys are big too */
         }
         .toy-item.Toy1 { background-image: url('Toy1.png'); }
         .toy-item.Toy2 { background-image: url('Toy2.png'); }
@@ -609,8 +612,8 @@
         }
 
         @media (max-width: 600px) {
-            :root { --shiba-size: 50px; --obstacle-size: 40px; }
-            #game-container { border-radius: 0; height: 100vh; max-height: 100%; }
+            /* Mobile specific adjustments. Dynamic sizing will handle overall scaling. */
+            #game-container { border-radius: 0; height: 100vh; max-height: 100%; width: 100vw; }
             #score-container { font-size: 1em; right: auto; left: 10px; margin-top: 30px;} 
             #high-score-container { font-size: 1em; right: 10px;} 
             #intro-message h2 { font-size: 1.8em; }
@@ -645,12 +648,6 @@
             }
             #invincible-message {
                 font-size: 1.5em;
-            }
-            /* Adjust toy size for smaller screens */
-            .toy-item {
-                width: 60px; /* Slightly smaller for mobile */
-                height: 60px;
-                font-size: 60px;
             }
             .xp-gain-text {
                 font-size: 1em; /* Smaller on mobile */
@@ -1048,27 +1045,79 @@
         
         // Ensure this rule exists or is added once for bubble-float. Removed duplicate.
 
-        function setDynamicGroundHeight() {
+        function setDynamicSizes() {
+            const gameContainerWidth = elements.gameContainer.clientWidth;
             const gameContainerHeight = elements.gameContainer.clientHeight;
+
+            // Base sizes for a reference resolution (e.g., 800px width, 400px height)
+            const baseWidth = 800;
+            const baseHeight = 400;
+
+            // Calculate scaling factors based on the current container dimensions
+            const widthScale = gameContainerWidth / baseWidth;
+            const heightScale = gameContainerHeight / baseHeight;
+
+            // Use the smaller scale factor to ensure elements don't overflow
+            const scaleFactor = Math.min(widthScale, heightScale);
+
+            // Set dynamic CSS variables
+            const shibaSize = 60 * scaleFactor;
+            const obstacleSize = 50 * scaleFactor;
+            const toySize = 70 * scaleFactor;
+
+            document.documentElement.style.setProperty('--shiba-size', `${shibaSize}px`);
+            document.documentElement.style.setProperty('--obstacle-size', `${obstacleSize}px`);
+            document.documentElement.style.setProperty('--toy-size', `${toySize}px`); /* New variable for toys */
+
+            // Recalculate ground height based on new container height
             state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
             document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
-            
+
+            // Adjust shiba position if it's below ground after resize
             if (state.shibaY <= state.groundHeight) {
                 state.shibaY = state.groundHeight;
                 elements.shibaContainer.style.bottom = `${state.shibaY}px`;
             }
 
+            // Reposition existing ground-type items
             document.querySelectorAll('.obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type').forEach(el => {
                 el.style.bottom = `${state.groundHeight}px`;
             });
+            // Reposition existing flying-type items
             document.querySelectorAll('.obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type').forEach(el => {
-                el.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
+                // Ensure flying objects maintain their relative position above the ground,
+                // adjusting for the new ground height and keeping a random offset.
+                // We'll keep the 80px + Math.random * 70px as relative to the ground.
+                const randomOffset = parseFloat(el.style.bottom.split(' ')[2] || '0'); // Try to parse existing random offset
+                el.style.bottom = `calc(${state.groundHeight}px + ${80 * scaleFactor}px + ${Math.random() * 70 * scaleFactor}px)`; 
             });
+
+            // Adjust font sizes for elements that don't scale with em/rem properly or need specific scaling
+            // This is just an example, you might need to fine-tune based on your design.
+            elements.scoreDisplay.style.fontSize = `${1.5 * scaleFactor}em`;
+            elements.highScoreDisplay.style.fontSize = `${1.5 * scaleFactor}em`;
+            elements.xpLevelText.style.fontSize = `${0.7 * scaleFactor}em`;
+            elements.xpLevelText.parentNode.style.width = `${100 * scaleFactor}px`;
+            elements.xpLevelText.parentNode.style.height = `${20 * scaleFactor}px`;
+            elements.invincibleMessage.style.fontSize = `${2 * scaleFactor}em`;
+            elements.shibaName.style.fontSize = `${0.8 * scaleFactor}em`;
+
+
+            // Re-apply the `moveItem` animation to existing items to ensure their speed and `to` value are correct after resizing
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                const speedMultiplier = 1 + (state.score * 0.01);
+                let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier);
+                item.style.animationDuration = `${animationSpeed}s`;
+                // Re-setting the animation name implicitly restarts it with new properties
+                item.style.animationName = 'moveItem'; 
+            });
+
         }
 
+
         function init() {
-            setDynamicGroundHeight(); 
-            window.addEventListener('resize', setDynamicGroundHeight); 
+            setDynamicSizes(); // Set initial sizes
+            window.addEventListener('resize', setDynamicSizes); // Update sizes on resize
 
             state.highScore = localStorage.getItem('shibaHighScore') || 0;
             state.playerXP = parseInt(localStorage.getItem('shibaPlayerXP')) || 0;
@@ -1231,6 +1280,9 @@
 
             elements.gameWorld.appendChild(item);
 
+            // Set initial position to the right before animation starts
+            item.style.left = "100%";
+
             // Dynamic speed for items based on score
             const speedMultiplier = 1 + (state.score * 0.01); 
             let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier); 
@@ -1373,6 +1425,9 @@
         function checkCollisions() {
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                // Ensure item is still in the DOM and visible before checking collision
+                if (!item.parentNode || item.getBoundingClientRect().right < 0) return;
+
                 const itemRect = item.getBoundingClientRect();
                 
                 // Increased collision overlap for more lenient detection
@@ -1413,21 +1468,16 @@
         }
 
         function checkItemPassage() {
-            const shibaRect = elements.shibaContainer.getBoundingClientRect();
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // Check if item is off-screen
-                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
-                    // Only obstacles give points for passing
-                    if (item.classList.contains('obstacle') && item.dataset.passed === 'false') {
-                        // Ensure it wasn't already marked as collided (if invincible)
-                        if (!item.hasAttribute('data-collided')) { 
-                            updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
-                            item.dataset.passed = 'true'; // Mark as passed
-                        }
-                    } else if (item.classList.contains('toy-item') || item.classList.contains('power-up')) {
-                        // If toys or power-ups are passed/missed, remove them without scoring
-                        item.remove();
-                        // Reset toy streak if a toy is missed (passes off screen)
+                // Remove item if its right edge is completely off-screen to the left
+                // Adding a small buffer (-10px) to ensure it's truly gone
+                if (item.getBoundingClientRect().right < -10 && item.parentNode) {
+                    // Only obstacles give points for passing if they haven't been collided with (invincible)
+                    if (item.classList.contains('obstacle') && item.dataset.passed === 'false' && !item.hasAttribute('data-collided')) {
+                        updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
+                        item.dataset.passed = 'true'; // Mark as passed
+                    } else if ((item.classList.contains('toy-item') || item.classList.contains('power-up')) && !item.hasAttribute('data-collected')) {
+                        // If toys or power-ups are passed/missed, and not collected, reset streak for toys
                         if (item.classList.contains('toy-item')) {
                             state.toysCollectedInStreak = 0;
                         }
