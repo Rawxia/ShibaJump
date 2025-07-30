@@ -13,9 +13,11 @@
             --bg-color: #f7f7f7;
             --text-color: #333;
             --accent-color: #ff6347;
-            /* Dynamic sizes, will be set by JS */
+            
+            /* Dynamic sizes, will be set by JS based on gameScale */
             --shiba-size: 60px;
             --obstacle-size: 50px;
+            --toy-size: 70px; /* New variable for toys */
             --ground-height-percent: 25%;
             --ground-height: 0px; 
             
@@ -24,6 +26,10 @@
             --current-cloud-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="250" viewBox="0 0 50 50"><path fill="%23FFFFFF" d="M41.9 23.3c-1-5.6-5.8-9.8-11.4-9.8-3.7 0-7 1.8-9.1 4.5-1.3-1.2-3-2-4.9-2-3.4 0-6.1 2.8-6.1 6.1 0 .6.1 1.2.3 1.8-4.3.5-7.6 4.1-7.6 8.5 0 4.7 3.8 8.5 8.5 8.5h29.5c4.1 0 7.5-3.4 7.5-7.5 0-3.9-3-7.1-6.8-7.5z"/></svg>');
             --current-ground-color: #e0e0e0;
             --current-ground-border-color: #ccc;
+
+            /* Game world dimensions for scaling reference */
+            --game-base-width: 800px;
+            --game-base-height: 400px;
         }
 
         body {
@@ -42,61 +48,66 @@
         }
 
         #game-container {
-            /* Dynamic sizing for better desktop scaling */
-            width: 90vw; /* Use viewport width */
-            max-width: 800px;
-            height: 60vh; /* Use viewport height */
-            max-height: 400px; /* Still have a max height for very large screens */
+            width: 90vw; 
+            height: 60vh;
+            /* Remove max-width/max-height here to allow it to expand on ultrawide.
+               The internal game-world will handle its aspect ratio. */
             border-radius: 20px;
-            background: var(--current-sky-color); /* Use biome color */
+            background: var(--current-sky-color); 
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
             display: flex;
             justify-content: center; 
             align-items: center; 
-            transition: background-color 0.5s ease-in-out; /* Smooth biome transitions */
+            transition: background-color 0.5s ease-in-out; 
         }
 
         #game-world {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+            /* These will be dynamically set by JS to maintain aspect ratio */
+            width: var(--game-base-width); 
+            height: var(--game-base-height);
+            transform-origin: center center; /* Ensure scaling is from center */
+            /* Scaled by JS: transform: scale(var(--game-scale)); */
+            overflow: hidden; /* Important for containing items */
             display: flex;
             justify-content: center; 
             align-items: flex-end; 
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(var(--game-scale));
         }
         
         #clouds {
             position: absolute;
             top: 0;
             left: 0;
-            width: 200%;
+            width: 200%; /* Double width for parallax */
             height: 100%;
-            background-image: var(--current-cloud-svg); /* Use biome cloud */
+            background-image: var(--current-cloud-svg); 
             background-repeat: repeat-x;
             opacity: 0.7;
             animation: moveClouds 25s linear infinite;
-            transition: background-image 0.5s ease-in-out; /* Smooth cloud transitions */
+            transition: background-image 0.5s ease-in-out; 
         }
 
         #ground {
-            width: 200%;
+            width: 200%; /* Double width for parallax */
             height: var(--ground-height); 
-            background: var(--current-ground-color); /* Use biome color */
+            background: var(--current-ground-color); 
             position: absolute;
             bottom: 0;
             left: 0;
-            border-top: 2px solid var(--current-ground-border-color); /* Use biome color */
+            border-top: 2px solid var(--current-ground-border-color); 
             animation: moveGround 4s linear infinite;
-            transition: background 0.5s ease-in-out, border-top-color 0.5s ease-in-out; /* Smooth ground transitions */
+            transition: background 0.5s ease-in-out, border-top-color 0.5s ease-in-out; 
         }
         
         #shiba-container {
             position: absolute;
             bottom: var(--ground-height); 
-            left: calc(50% - (var(--shiba-size) / 2)); 
+            left: calc(20% - (var(--shiba-size) / 2)); /* Shiba now fixed at 20% from left */
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -113,13 +124,13 @@
         }
 
         #shiba-name {
-            font-family: 'Press Start 2P', cursive; /* 8-bit font */
-            font-size: 0.8em; /* Small 8-bit text */
+            font-family: 'Press Start 2P', cursive; 
+            font-size: 0.8em; 
             color: #fff;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
             position: absolute;
-            top: -25px; /* Position above shiba */
-            white-space: nowrap; /* Prevent text wrapping */
+            top: -25px; 
+            white-space: nowrap; 
         }
         
         .invincible { animation: flash 0.5s linear infinite; }
@@ -132,16 +143,17 @@
         }
 
         .obstacle, .power-up, .toy-item {
+            /* Sizes are dynamic via JS now using var(--obstacle-size) etc. */
             width: var(--obstacle-size);
             height: var(--obstacle-size);
             background-size: contain;
             background-repeat: no-repeat;
             position: absolute;
-            font-size: var(--obstacle-size);
+            font-size: var(--obstacle-size); /* For emoji obstacles */
             line-height: 1;
             z-index: 10;
-            /* Animation set dynamically by JS, but keeping it here as a fallback/reference */
-            animation: moveItem 3.5s linear; 
+            animation: moveItem var(--item-animation-duration) linear; /* Duration now a CSS variable */
+            left: 100%; /* Default starting position, ensures it's off-screen */
         }
         
         .obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type {
@@ -149,16 +161,17 @@
         }
 
         .obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type {
-            bottom: calc(var(--ground-height) + 100px); 
-            font-size: 60px; 
+            /* These values are now relative to the scaled game world */
+            bottom: calc(var(--ground-height) + 100px); /* Base height above ground */
+            font-size: var(--obstacle-size); /* For emoji flying items */
         }
 
         /* Toy specific styles */
         .toy-item {
-            width: var(--toy-size); /* Use dynamic toy size */
-            height: var(--toy-size); /* Use dynamic toy size */
-            animation: moveItem 3.5s linear, wiggleToy 1s ease-in-out infinite; 
-            font-size: var(--toy-size); /* Ensure emoji toys are big too */
+            width: var(--toy-size); 
+            height: var(--toy-size); 
+            animation: moveItem var(--item-animation-duration) linear, wiggleToy 1s ease-in-out infinite; 
+            font-size: var(--toy-size); 
         }
         .toy-item.Toy1 { background-image: url('Toy1.png'); }
         .toy-item.Toy2 { background-image: url('Toy2.png'); }
@@ -172,17 +185,17 @@
             100% { transform: rotate(0deg); }
         }
 
-        /* Score & High Score positions */
+        /* Score & High Score positions - Relative to game-container */
         #score-container {
             position: absolute;
             top: 20px;
-            left: 20px; /* Aligned with XP bar */
+            left: 20px; 
             font-size: 1.5em;
             font-weight: 700;
             color: white;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
             z-index: 20;
-            margin-top: 35px; /* Space below XP bar */
+            margin-top: 35px; 
         }
         #high-score-container { 
             position: absolute;
@@ -201,10 +214,10 @@
         }
 
         /* Score effects */
-        .score-effect-1 { transform: scale(1.2); color: #FFFACD; } /* Lemon Chiffon */
+        .score-effect-1 { transform: scale(1.2); color: #FFFACD; } 
         .score-effect-2 { transform: rotate(5deg); }
         .score-effect-3 { transform: translateY(-3px); }
-        .score-effect-4 { color: #ADFF2F; } /* GreenYellow */
+        .score-effect-4 { color: #ADFF2F; } 
 
         #splash-screen, #game-over-screen, #intro-message {
             position: absolute;
@@ -239,7 +252,7 @@
             color: #FFD700; 
             white-space: nowrap; 
             overflow: hidden; 
-            animation: bounceInLogo 1s ease-out forwards; /* Shiba Jump logo animation */
+            animation: bounceInLogo 1s ease-out forwards; 
         }
         @keyframes bounceInLogo {
             0% { transform: scale(0.5); opacity: 0; }
@@ -255,9 +268,9 @@
             line-height: 1.4; 
         }
         #splash-screen .chicken-message {
-            font-size: clamp(1em, 3.5vw, 1.5em); /* Slightly larger */
+            font-size: clamp(1em, 3.5vw, 1.5em); 
             font-weight: bold;
-            color: #FFD700; /* Gold color for visibility */
+            color: #FFD700; 
             text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
         #splash-screen .tagline {
@@ -299,48 +312,47 @@
             border-radius: 10px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.5);
-            z-index: 101; /* Ensured it stays on top */
-            display: flex; /* Use flexbox */
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
+            z-index: 101; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
             font-family: 'Press Start 2P', cursive;
             font-size: 0.7em;
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            white-space: nowrap; /* Prevent text wrapping */
+            white-space: nowrap; 
         }
 
         #xp-bar-fill {
-            position: absolute; /* Keep fill absolute */
+            position: absolute; 
             left: 0;
             top: 0;
             height: 100%;
             width: 0%;
-            background-color: #ADD8E6; /* Light Blue XP */
+            background-color: #ADD8E6; 
             transition: width 0.3s ease-out;
             border-radius: 10px;
         }
 
         #xp-level-text {
-            position: relative; /* Make text relative to the flex container */
-            z-index: 1; /* Ensure text is above the fill */
+            position: relative; 
+            z-index: 1; 
         }
         
         .xp-gain-text {
             position: absolute;
-            color: #FFD700; /* Gold */
-            font-family: 'Press Start 2P', cursive; /* Use 8-bit font */
-            font-size: 1.2em; /* Larger size */
+            color: #FFD700; 
+            font-family: 'Press Start 2P', cursive; 
+            font-size: 1.2em; 
             font-weight: bold;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8); /* More prominent shadow */
-            animation: xp-pop-fade 0.8s ease-out forwards; /* Longer duration and new animation */
-            pointer-events: none; /* Make sure it doesn't block clicks */
-            z-index: 102; /* Above XP bar */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8); 
+            animation: xp-pop-fade 0.8s ease-out forwards; 
+            pointer-events: none; 
+            z-index: 102; 
             white-space: nowrap;
-            /* New positioning for central display */
-            top: 15%; /* Adjust as needed */
+            top: 15%; 
             left: 50%;
-            transform: translateX(-50%); /* Center horizontally */
+            transform: translateX(-50%); 
         }
 
         @keyframes xp-pop-fade {
@@ -363,14 +375,14 @@
             font-weight: 700;
             transition: transform 0.2s, box-shadow 0.2s;
             margin-top: 30px;
-            animation: wiggle 2s infinite ease-in-out; /* Wiggle animation */
+            animation: wiggle 2s infinite ease-in-out; 
         }
         #splash-screen button:hover {
             transform: translateY(-3px);
             box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
         }
         #splash-screen button.clicked {
-            animation: button-pop 0.2s ease-out forwards; /* Pop effect */
+            animation: button-pop 0.2s ease-out forwards; 
         }
 
         #intro-message {
@@ -443,7 +455,7 @@
         /* Fire Confetti */
         .fire-confetti {
             position: absolute;
-            font-size: 20px; /* Smaller fire emojis */
+            font-size: 20px; 
             animation: fire-fall 1.5s ease-out forwards;
             opacity: 0;
             z-index: 20;
@@ -460,16 +472,16 @@
             position: absolute;
             width: 2px;
             height: 10px;
-            background-color: rgba(173, 216, 230, 0.8); /* Light blue, slightly transparent */
+            background-color: rgba(173, 216, 230, 0.8); 
             border-radius: 50%;
             pointer-events: none;
             opacity: 0;
             animation: rain-fall 1s linear forwards;
-            z-index: 5; /* Below obstacles but above ground/clouds */
+            z-index: 5; 
         }
         @keyframes rain-fall {
             0% { transform: translateY(-10px); opacity: 0.8; }
-            100% { transform: translateY(450px); opacity: 0; } /* Adjust 450px based on game container height */
+            100% { transform: translateY(var(--game-base-height)); opacity: 0; } 
         }
 
         #invincible-message {
@@ -479,12 +491,12 @@
             transform: translate(-50%, -50%);
             font-family: 'Press Start 2P', cursive;
             font-size: 2em;
-            color: #FFD700; /* Gold */
+            color: #FFD700; 
             text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
             z-index: 100;
-            display: none; /* Controlled by JS */
+            display: none; 
             animation: invincibility-pulse 1s infinite alternate;
-            white-space: nowrap; /* Prevent wrapping */
+            white-space: nowrap; 
         }
         #invincible-message.visible {
             display: block;
@@ -499,8 +511,8 @@
             position: absolute;
             width: 15px;
             height: 15px;
-            background-color: #8B4513; /* SaddleBrown */
-            border-radius: 0 50% 50% 50%; /* Leaf shape */
+            background-color: #8B4513; 
+            border-radius: 0 50% 50% 50%; 
             transform: rotate(var(--rotation, 0deg));
             opacity: 0;
             animation: leaf-fall var(--duration) linear var(--delay) forwards;
@@ -509,14 +521,14 @@
         }
         @keyframes leaf-fall {
             0% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); opacity: 1; }
-            100% { transform: translateY(calc(100vh + 50px)) rotate(calc(var(--rotation, 0deg) + 360deg)); opacity: 0; }
+            100% { transform: translateY(calc(var(--game-base-height) + 50px)) rotate(calc(var(--rotation, 0deg) + 360deg)); opacity: 0; }
         }
 
         .dust-particle {
             position: absolute;
             width: 3px;
             height: 3px;
-            background-color: rgba(255, 228, 181, 0.7); /* Moccasin, semi-transparent */
+            background-color: rgba(255, 228, 181, 0.7); 
             border-radius: 50%;
             opacity: 0;
             animation: sand-drift var(--duration) linear var(--delay) forwards;
@@ -536,13 +548,13 @@
             background-color: white;
             border-radius: 50%;
             opacity: 0;
-            animation: snow-fall var(--duration) linear var(--delay) forwards; /* Changed to forwards to match others */
+            animation: snow-fall var(--duration) linear var(--delay) forwards; 
             z-index: 5;
             pointer-events: none;
         }
         @keyframes snow-fall {
             0% { transform: translateY(-10px) translateX(0px); opacity: 0.8; }
-            100% { transform: translateY(450px) translateX(var(--drift-x)); opacity: 0; } /* Adjust 450px based on game container height */
+            100% { transform: translateY(var(--game-base-height)) translateX(var(--drift-x)); opacity: 0; } 
         }
 
         .star {
@@ -555,7 +567,7 @@
             animation: star-twinkle var(--duration) ease-in-out infinite alternate;
             z-index: 5;
             pointer-events: none;
-            box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.5); /* Glowing effect */
+            box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.5); 
         }
         @keyframes star-twinkle {
             0%, 100% { opacity: 0; }
@@ -580,7 +592,11 @@
 
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        @keyframes moveItem { from { left: 100%; } to { left: -100px; } } /* Renamed to moveItem for all collectibles */
+        /* Item animation now moves them relative to the game-world's width */
+        @keyframes moveItem { 
+            from { left: var(--game-base-width); } 
+            to { left: -100px; } 
+        } 
         @keyframes flash { 50% { opacity: 0.3; } }
         @keyframes particle-poof {
             0% { transform: scale(1) translateY(0); opacity: 1; }
@@ -611,11 +627,16 @@
             100% { transform: scale(1); }
         }
 
+        /* Responsive adjustments for overall game-container on mobile */
         @media (max-width: 600px) {
-            /* Mobile specific adjustments. Dynamic sizing will handle overall scaling. */
-            #game-container { border-radius: 0; height: 100vh; max-height: 100%; width: 100vw; }
-            #score-container { font-size: 1em; right: auto; left: 10px; margin-top: 30px;} 
-            #high-score-container { font-size: 1em; right: 10px;} 
+            #game-container { 
+                border-radius: 0; 
+                height: 100vh; 
+                width: 100vw; 
+            }
+            /* Score, XP bar, etc. outside game-world should adapt */
+            #score-container { font-size: 1.2em; right: auto; left: 10px; margin-top: 30px;} 
+            #high-score-container { font-size: 1.2em; right: 10px;} 
             #intro-message h2 { font-size: 1.8em; }
             #intro-message p { font-size: 4em; }
             #game-over-screen h2 { font-size: 2.5em; }
@@ -641,10 +662,8 @@
                 top: 10px;
                 left: 10px;
             }
-            /* Remove absolute positioning for text inside flex container */
             #xp-level-text {
-                position: relative; 
-                line-height: 18px;
+                line-height: 18px; /* Adjust line-height to center text vertically in the smaller bar */
             }
             #invincible-message {
                 font-size: 1.5em;
@@ -739,24 +758,24 @@
             isInvincible: false,
             gameLoopInterval: null,
             obstacleInterval: null,
-            lastObstacleInterval: 0, // To track and prevent rapid interval changes
+            lastObstacleInterval: 0, 
             confettiInterval: null, 
             shibaY: 0, 
             velocityY: 0, 
-            gravity: 0.9, // Increased gravity for faster fall
-            jumpStrength: -20, // Increased jump strength for higher jumps
-            maxHoldJumpBoost: -10, // Increased jump boost
+            gravity: 0.9, 
+            jumpStrength: -20, 
+            maxHoldJumpBoost: -10, 
             jumpHoldTimer: null,
             groundHeight: 0, 
-            flyingObstacleThreshold: 10, // Flying obstacles appear earlier
+            flyingObstacleThreshold: 10, 
             currentBiomeIndex: 0, 
             lastBiomeChangeScore: 0, 
-            biomeChangeInterval: 7, // Biomes change more frequently
-            normalObstacleInterval: 1500, // Obstacles appear faster
-            minObstacleInterval: 700, // Minimum obstacle interval for increased challenge
+            biomeChangeInterval: 7, 
+            normalObstacleInterval: 1500, 
+            minObstacleInterval: 700, 
             playerXP: parseInt(localStorage.getItem('shibaPlayerXP')) || 0,
             playerLevel: parseInt(localStorage.getItem('shibaPlayerLevel')) || 1,
-            xpToNextLevel: 1000,
+            xpToNextLevel: parseInt(localStorage.getItem('shibaXpToNextLevel')) || 1000, // Load saved or default
             biomeOrder: [], 
             biomeCurrentIndexInOrder: 0,
             bubbleInterval: null, 
@@ -765,14 +784,19 @@
             dustInterval: null, 
             snowInterval: null, 
             starInterval: null,
-            baseGameSpeed: 3, // Faster base game speed
-            obstacleBaseSpeed: 2.5, // Faster base obstacle speed
-            toysCollectedInStreak: 0 // New state for fire confetti
+            baseGameSpeed: 3, 
+            obstacleBaseSpeed: 2.5, 
+            toysCollectedInStreak: 0,
+            
+            // New for dynamic scaling
+            baseGameWidth: 800, // Reference width for internal game elements
+            baseGameHeight: 400, // Reference height for internal game elements
+            gameScale: 1 // Current scaling factor for the game world
         };
         
         const EMOJIS = {
             invincibilityPowerUp: '🍗', 
-            fireConfetti: '🔥', // New fire emoji
+            fireConfetti: '🔥', 
             sky: {
                 ground: ['🌳', '🪨', '🌲', '🪵'],
                 flying: ['☁️', '🎈', '🦉']
@@ -817,7 +841,7 @@
                 groundBorderColor: "#ccc",
                 groundObstacles: EMOJIS.sky.ground,
                 flyingObstacles: EMOJIS.sky.flying,
-                specialEffect: null // Sky will remain clean
+                specialEffect: null 
             },
             {
                 name: "Desert",
@@ -943,7 +967,7 @@
                 bubble.style.width = `${Math.random() * 10 + 5}px`;
                 bubble.style.height = bubble.style.width;
                 bubble.style.bottom = `${state.groundHeight}px`; 
-                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
                 
                 const driftAmount = Math.random() > 0.5 ? 20 : -20;
                 bubble.style.setProperty('--bubble-drift', `${driftAmount}px`); 
@@ -951,7 +975,6 @@
                 
                 elements.gameWorld.appendChild(bubble);
 
-                // Adjusted timeout to match new property name
                 setTimeout(() => bubble.remove(), parseFloat(bubble.style.getPropertyValue('--duration')) * 1000); 
             }, 300); 
         }
@@ -964,7 +987,7 @@
                 }
                 const raindrop = document.createElement('div');
                 raindrop.classList.add('raindrop');
-                raindrop.style.left = `${Math.random() * 100}%`;
+                raindrop.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
                 raindrop.style.animationDuration = `${Math.random() * 0.8 + 0.5}s`; 
                 raindrop.style.animationDelay = `${Math.random() * 1}s`; 
                 elements.gameWorld.appendChild(raindrop);
@@ -981,7 +1004,7 @@
                 }
                 const leaf = document.createElement('div');
                 leaf.classList.add('leaf');
-                leaf.style.left = `${Math.random() * 100}%`;
+                leaf.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
                 leaf.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
                 leaf.style.setProperty('--delay', `${Math.random() * 2}s`);
                 leaf.style.setProperty('--rotation', `${Math.random() * 360}deg`);
@@ -998,12 +1021,12 @@
                 }
                 const dust = document.createElement('div');
                 dust.classList.add('dust-particle');
-                dust.style.left = `${Math.random() * 100}%`;
-                dust.style.bottom = `${state.groundHeight + Math.random() * 20}px`; /* Near ground */
+                dust.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                dust.style.bottom = `${state.groundHeight + Math.random() * 20}px`; 
                 dust.style.setProperty('--duration', `${Math.random() * 3 + 1}s`);
                 dust.style.setProperty('--delay', `${Math.random() * 1}s`);
-                dust.style.setProperty('--drift-x', `${Math.random() * 100 - 50}px`); /* Horizontal drift */
-                dust.style.setProperty('--drift-y', `${Math.random() * -50}px`); /* Upward drift */
+                dust.style.setProperty('--drift-x', `${Math.random() * 100 - 50}px`); 
+                dust.style.setProperty('--drift-y', `${Math.random() * -50}px`); 
                 elements.gameWorld.appendChild(dust);
                 setTimeout(() => dust.remove(), parseFloat(dust.style.getPropertyValue('--duration')) * 1000 + parseFloat(dust.style.getPropertyValue('--delay')) * 1000);
             }, 100);
@@ -1017,7 +1040,7 @@
                 }
                 const snowflake = document.createElement('div');
                 snowflake.classList.add('snowflake');
-                snowflake.style.left = `${Math.random() * 100}%`;
+                snowflake.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
                 snowflake.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
                 snowflake.style.setProperty('--delay', `${Math.random() * 2}s`);
                 snowflake.style.setProperty('--drift-x', `${Math.random() * 50 - 25}px`); 
@@ -1034,8 +1057,8 @@
                 }
                 const star = document.createElement('div');
                 star.classList.add('star');
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * (elements.gameContainer.clientHeight - state.groundHeight - 50)}px`; /* Avoid ground */
+                star.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                star.style.top = `${Math.random() * (state.baseGameHeight - state.groundHeight - 50)}px`; 
                 star.style.setProperty('--duration', `${Math.random() * 3 + 1.5}s`);
                 star.style.setProperty('--delay', `${Math.random() * 2}s`);
                 elements.gameWorld.appendChild(star);
@@ -1043,89 +1066,95 @@
             }, 200);
         }
         
-        // Ensure this rule exists or is added once for bubble-float. Removed duplicate.
+        function resizeGame() {
+            const containerWidth = elements.gameContainer.clientWidth;
+            const containerHeight = elements.gameContainer.clientHeight;
 
-        function setDynamicSizes() {
-            const gameContainerWidth = elements.gameContainer.clientWidth;
-            const gameContainerHeight = elements.gameContainer.clientHeight;
+            // Calculate scale based on fitting the base game dimensions into the container
+            // Maintain aspect ratio: (base width / base height) = (container width / container height)
+            // If container is wider than base aspect ratio, scale by height
+            // If container is taller than base aspect ratio, scale by width
+            const gameAspectRatio = state.baseGameWidth / state.baseGameHeight;
+            const containerAspectRatio = containerWidth / containerHeight;
 
-            // Base sizes for a reference resolution (e.g., 800px width, 400px height)
-            const baseWidth = 800;
-            const baseHeight = 400;
-
-            // Calculate scaling factors based on the current container dimensions
-            const widthScale = gameContainerWidth / baseWidth;
-            const heightScale = gameContainerHeight / baseHeight;
-
-            // Use the smaller scale factor to ensure elements don't overflow
-            const scaleFactor = Math.min(widthScale, heightScale);
-
-            // Set dynamic CSS variables
-            const shibaSize = 60 * scaleFactor;
-            const obstacleSize = 50 * scaleFactor;
-            const toySize = 70 * scaleFactor;
-
-            document.documentElement.style.setProperty('--shiba-size', `${shibaSize}px`);
-            document.documentElement.style.setProperty('--obstacle-size', `${obstacleSize}px`);
-            document.documentElement.style.setProperty('--toy-size', `${toySize}px`); /* New variable for toys */
-
-            // Recalculate ground height based on new container height
-            state.groundHeight = gameContainerHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
-            document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
-
-            // Adjust shiba position if it's below ground after resize
-            if (state.shibaY <= state.groundHeight) {
-                state.shibaY = state.groundHeight;
-                elements.shibaContainer.style.bottom = `${state.shibaY}px`;
+            let scale;
+            if (containerAspectRatio > gameAspectRatio) {
+                // Container is wider than the game base, scale based on height
+                scale = containerHeight / state.baseGameHeight;
+            } else {
+                // Container is taller (or same aspect ratio), scale based on width
+                scale = containerWidth / state.baseGameWidth;
             }
 
-            // Reposition existing ground-type items
-            document.querySelectorAll('.obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type').forEach(el => {
-                el.style.bottom = `${state.groundHeight}px`;
+            state.gameScale = scale;
+            elements.gameWorld.style.setProperty('--game-scale', scale);
+
+            // Update CSS variables for scaled elements.
+            // These values are based on the *original* design sizes before scaling.
+            document.documentElement.style.setProperty('--shiba-size', `${60 * scale}px`);
+            document.documentElement.style.setProperty('--obstacle-size', `${50 * scale}px`);
+            document.documentElement.style.setProperty('--toy-size', `${70 * scale}px`); 
+            
+            state.groundHeight = state.baseGameHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
+            document.documentElement.style.setProperty('--ground-height', `${state.groundHeight * scale}px`);
+            
+            // Adjust font sizes for elements outside game-world that need specific scaling
+            elements.scoreDisplay.style.fontSize = `${1.5 * scale}em`;
+            elements.highScoreDisplay.style.fontSize = `${1.5 * scale}em`;
+            elements.xpLevelText.style.fontSize = `${0.7 * scale}em`;
+            elements.xpLevelText.parentNode.style.width = `${100 * scale}px`;
+            elements.xpLevelText.parentNode.style.height = `${20 * scale}px`;
+            elements.invincibleMessage.style.fontSize = `${2 * scale}em`;
+            elements.shibaName.style.fontSize = `${0.8 * scale}em`;
+            
+            // If the Shiba is on the ground, ensure its position is updated after groundHeight changes
+            if (!state.isJumping) {
+                state.shibaY = state.groundHeight / scale; // Convert to baseGameHeight units for logic
+                elements.shibaContainer.style.bottom = `${state.groundHeight}px`; // Display in scaled units
+            }
+            
+            // Re-adjust item bottom positions for already existing items
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                if (item.classList.contains('ground-type')) {
+                    item.style.bottom = `${state.groundHeight}px`;
+                } else if (item.classList.contains('flying-type')) {
+                    // Flying items maintain their relative position above ground
+                    item.style.bottom = `calc(${state.groundHeight}px + ${100 * scale}px + ${Math.random() * 70 * scale}px)`;
+                }
             });
-            // Reposition existing flying-type items
-            document.querySelectorAll('.obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type').forEach(el => {
-                // Ensure flying objects maintain their relative position above the ground,
-                // adjusting for the new ground height and keeping a random offset.
-                // We'll keep the 80px + Math.random * 70px as relative to the ground.
-                const randomOffset = parseFloat(el.style.bottom.split(' ')[2] || '0'); // Try to parse existing random offset
-                el.style.bottom = `calc(${state.groundHeight}px + ${80 * scaleFactor}px + ${Math.random() * 70 * scaleFactor}px)`; 
-            });
 
-            // Adjust font sizes for elements that don't scale with em/rem properly or need specific scaling
-            // This is just an example, you might need to fine-tune based on your design.
-            elements.scoreDisplay.style.fontSize = `${1.5 * scaleFactor}em`;
-            elements.highScoreDisplay.style.fontSize = `${1.5 * scaleFactor}em`;
-            elements.xpLevelText.style.fontSize = `${0.7 * scaleFactor}em`;
-            elements.xpLevelText.parentNode.style.width = `${100 * scaleFactor}px`;
-            elements.xpLevelText.parentNode.style.height = `${20 * scaleFactor}px`;
-            elements.invincibleMessage.style.fontSize = `${2 * scaleFactor}em`;
-            elements.shibaName.style.fontSize = `${0.8 * scaleFactor}em`;
-
-
-            // Re-apply the `moveItem` animation to existing items to ensure their speed and `to` value are correct after resizing
+            // Re-calculate and set animation speed for all moving items
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
                 const speedMultiplier = 1 + (state.score * 0.01);
                 let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier);
-                item.style.animationDuration = `${animationSpeed}s`;
-                // Re-setting the animation name implicitly restarts it with new properties
-                item.style.animationName = 'moveItem'; 
+                item.style.setProperty('--item-animation-duration', `${animationSpeed}s`);
+                // Force a re-animation by briefly setting to 'none' and then back.
+                // This ensures 'from' and 'to' values (like `left: var(--game-base-width);`) are re-evaluated.
+                const currentAnimation = item.style.animation;
+                item.style.animation = 'none';
+                void item.offsetWidth; // Trigger reflow
+                item.style.animation = currentAnimation;
             });
-
+            // Update ground and clouds animation to reflect new speed
+            checkGameSpeed(); 
         }
 
-
         function init() {
-            setDynamicSizes(); // Set initial sizes
-            window.addEventListener('resize', setDynamicSizes); // Update sizes on resize
+            // Set initial game world dimensions as CSS variables for the @keyframes
+            document.documentElement.style.setProperty('--game-base-width', `${state.baseGameWidth}px`);
+            document.documentElement.style.setProperty('--game-base-height', `${state.baseGameHeight}px`);
+
+            resizeGame(); // Set initial sizes and scale
+            window.addEventListener('resize', resizeGame); // Update sizes on resize
 
             state.highScore = localStorage.getItem('shibaHighScore') || 0;
             state.playerXP = parseInt(localStorage.getItem('shibaPlayerXP')) || 0;
             state.playerLevel = parseInt(localStorage.getItem('shibaPlayerLevel')) || 1;
+            state.xpToNextLevel = parseInt(localStorage.getItem('shibaXpToNextLevel')) || 1000;
 
             elements.highScoreDisplay.textContent = state.highScore;
             elements.splashHighScore.textContent = state.highScore; 
-            updateXPDisplay();
+            updateXPDisplay(); // Ensure XP bar is updated on load
 
             elements.playButton.addEventListener('click', handlePlayButtonClick);
             elements.playButton.addEventListener('touchstart', handlePlayButtonClick);
@@ -1160,25 +1189,26 @@
         }
 
         function startGame() {
-            state.isGameOver = true; // Set to true initially to ensure all intervals are cleared correctly before starting
-            endGameCleanup(); // Perform cleanup before starting a new game
+            state.isGameOver = true; 
+            endGameCleanup(); 
             
             state.isGameOver = false;
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
-            state.toysCollectedInStreak = 0; // Reset toy streak
+            state.toysCollectedInStreak = 0; 
             elements.scoreNumber.textContent = state.score; 
             elements.gameOverScreen.style.display = 'none';
             elements.newHighScoreMessage.style.display = 'none';
             elements.playButton.classList.remove('clicked'); 
-            elements.invincibleMessage.classList.remove('visible'); // Hide message at start
-            elements.shibaContainer.style.display = 'flex'; // Ensure shiba is visible
+            elements.invincibleMessage.classList.remove('visible'); 
+            elements.shibaContainer.style.display = 'flex'; 
 
-            ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'running');
+            elements.ground.style.animationPlayState = 'running';
+            elements.clouds.style.animationPlayState = 'running';
 
-            state.shibaY = state.groundHeight; 
+            state.shibaY = state.groundHeight / state.gameScale; // Store in base game units for consistent logic
             state.velocityY = 0;
-            elements.shibaContainer.style.bottom = `${state.shibaY}px`; 
+            elements.shibaContainer.style.bottom = `${state.shibaY * state.gameScale}px`; // Apply scale for display
             elements.shiba.style.transform = `translateY(0px)`; 
 
             generateBiomeOrder();
@@ -1195,10 +1225,9 @@
             if (state.gameLoopInterval) clearInterval(state.gameLoopInterval);
             state.gameLoopInterval = setInterval(gameLoop, 20);
             
-            // Initialize obstacle interval at the start of the game
             if (state.obstacleInterval) clearInterval(state.obstacleInterval);
             state.obstacleInterval = setInterval(createItem, state.normalObstacleInterval);
-            state.lastObstacleInterval = state.normalObstacleInterval; // Set initial interval value
+            state.lastObstacleInterval = state.normalObstacleInterval; 
         }
 
         const handleJumpStart = (e) => {
@@ -1206,13 +1235,14 @@
             const isMouseEvent = e.type === 'mousedown';
             const isTouchEvent = e.type === 'touchstart';
 
-            const isGameAreaClick = elements.gameContainer.contains(e.target) && !e.target.closest('button');
+            // Ensure click/touch is within game-container and not on a button
+            const isGameAreaInteraction = elements.gameContainer.contains(e.target) && !e.target.closest('button');
 
-            if (!state.isGameOver && !state.isJumping && (isKeyEvent || (isGameAreaClick && (isMouseEvent || isTouchEvent)))) {
+            if (!state.isGameOver && !state.isJumping && (isKeyEvent || (isGameAreaInteraction && (isMouseEvent || isTouchEvent)))) {
                 e.preventDefault(); 
                 state.isJumping = true;
                 state.velocityY = state.jumpStrength; 
-                elements.shiba.style.transform = `translateY(0px) rotate(-10deg)`; // Tilt up
+                elements.shiba.style.transform = `translateY(0px) rotate(-10deg)`; 
                 
                 state.jumpHoldTimer = setTimeout(() => {
                     if (state.isJumping) { 
@@ -1227,9 +1257,9 @@
             const isMouseEvent = e.type === 'mouseup';
             const isTouchEvent = e.type === 'touchend'; 
 
-            const isGameAreaClickRelease = elements.gameContainer.contains(e.target) && !e.target.closest('button');
+            const isGameAreaInteraction = elements.gameContainer.contains(e.target) && !e.target.closest('button');
 
-            if (state.isJumping && (isKeyEvent || (isGameAreaClickRelease && (isMouseEvent || isTouchEvent)))) {
+            if (state.isJumping && (isKeyEvent || (isGameAreaInteraction && (isMouseEvent || isTouchEvent)))) {
                 if (state.jumpHoldTimer) {
                     clearTimeout(state.jumpHoldTimer);
                     state.jumpHoldTimer = null;
@@ -1248,12 +1278,12 @@
             const currentBiome = BIOMES[state.biomeOrder[state.biomeCurrentIndexInOrder]];
 
             const randomChance = Math.random();
-            const isChickenPowerUp = randomChance < 0.05; // 5% chance for chicken
-            const isToyItem = !isChickenPowerUp && randomChance < 0.15; // If not chicken, 10% chance for toy (total 0.05 + 0.10 = 0.15)
+            const isChickenPowerUp = randomChance < 0.05; 
+            const isToyItem = !isChickenPowerUp && randomChance < 0.15; 
 
             let isFlying = Math.random() < 0.5; 
             if (state.score < state.flyingObstacleThreshold) {
-                isFlying = false; // Force ground items until threshold
+                isFlying = false; 
             }
 
             if (isChickenPowerUp) {
@@ -1262,12 +1292,10 @@
             } else if (isToyItem) {
                 item.classList.add('toy-item');
                 const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
-                item.classList.add(randomToy.replace('.png', '')); // Add class like 'Toy1'
+                item.classList.add(randomToy.replace('.png', '')); 
                 item.style.backgroundImage = `url('${randomToy}')`;
-                // Toys retain their specific styles and sizes, no textContent needed
             } else {
                 item.classList.add('obstacle');
-                // For obstacles, explicitly set textContent for emojis
                 if (isFlying) {
                     item.textContent = currentBiome.flyingObstacles[Math.floor(Math.random() * currentBiome.flyingObstacles.length)];
                 } else {
@@ -1281,25 +1309,23 @@
             elements.gameWorld.appendChild(item);
 
             // Set initial position to the right before animation starts
-            item.style.left = "100%";
-
-            // Dynamic speed for items based on score
+            // item.style.left is set by the CSS animation "from" keyframe to var(--game-base-width)
+            // No explicit setting here is needed as animation handles it.
+            
             const speedMultiplier = 1 + (state.score * 0.01); 
             let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier); 
             
-            item.style.animationDuration = `${animationSpeed}s`;
+            item.style.setProperty('--item-animation-duration', `${animationSpeed}s`);
 
             if (item.classList.contains('flying-type')) {
-                item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
-                // Ensure flying toy-items also have correct font-size if they are emojis
-                if (item.classList.contains('toy-item') && item.textContent !== '') { 
-                    item.style.fontSize = `var(--obstacle-size)`; 
-                }
+                // These values are now relative to the BASE game height (400px)
+                item.style.bottom = `calc(${state.groundHeight / state.gameScale}px + ${100}px + ${Math.random() * 70}px)`; 
             } else {
-                item.style.bottom = `${state.groundHeight}px`; 
+                item.style.bottom = `${state.groundHeight / state.gameScale}px`; 
             }
 
             item.dataset.passed = 'false'; // Track if this item has been passed
+            item.dataset.originalLeft = state.baseGameWidth; // Store initial left position in game world units
         }
 
         function updateScore(scoreAmount = 1, xpAmount = 0) {
@@ -1308,29 +1334,33 @@
             applyScoreEffect();
             checkConfetti();
             checkBiomeChange(); 
-            checkGameSpeed(); // Recalculate game speed after every score update
+            checkGameSpeed(); 
             if (xpAmount > 0) {
                 addXP(xpAmount);
             }
         }
 
         function checkGameSpeed() {
-            // Adjust speeds based on score for increasing difficulty
-            const speedFactor = 1 + (state.score * 0.015); // Faster increase in speed
-            const newGroundAnimationDuration = Math.max(1.0, state.baseGameSpeed / speedFactor); // Faster minimum speed
-            const newCloudAnimationDuration = Math.max(5, 25 / speedFactor); // Faster minimum speed
+            const speedFactor = 1 + (state.score * 0.015); 
+            const newGroundAnimationDuration = Math.max(1.0, state.baseGameSpeed / speedFactor); 
+            const newCloudAnimationDuration = Math.max(5, 25 / speedFactor); 
 
             elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
             elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
 
-            // Adjust obstacle creation interval - Make it faster for higher scores
             const newObstacleInterval = Math.max(state.minObstacleInterval, state.normalObstacleInterval / speedFactor);
-            // Only update interval if there's a significant change to prevent rapid clearing/setting
-            if (Math.abs(newObstacleInterval - state.lastObstacleInterval) > 50) { // Check for a 50ms difference
+            if (Math.abs(newObstacleInterval - state.lastObstacleInterval) > 50) { 
                 if (state.obstacleInterval) clearInterval(state.obstacleInterval);
                 state.obstacleInterval = setInterval(createItem, newObstacleInterval);
                 state.lastObstacleInterval = newObstacleInterval;
             }
+
+            // Also update the animation duration for all *existing* items
+            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
+                const itemSpeedMultiplier = 1 + (state.score * 0.01);
+                const itemAnimationSpeed = Math.max(0.8, state.obstacleBaseSpeed / itemSpeedMultiplier);
+                item.style.setProperty('--item-animation-duration', `${itemAnimationSpeed}s`);
+            });
         }
 
 
@@ -1352,7 +1382,7 @@
         function checkFireConfetti() {
             if (state.toysCollectedInStreak > 0 && state.toysCollectedInStreak % 5 === 0) {
                 createFireConfetti();
-                state.toysCollectedInStreak = 0; // Reset streak after trigger
+                state.toysCollectedInStreak = 0; 
             }
         }
 
@@ -1369,41 +1399,42 @@
             if (state.playerXP >= state.xpToNextLevel) {
                 state.playerLevel++;
                 state.playerXP -= state.xpToNextLevel; 
-                // Optionally increase xpToNextLevel for more challenge
                 state.xpToNextLevel = Math.round(state.xpToNextLevel * 1.2); 
             }
             localStorage.setItem('shibaPlayerXP', state.playerXP);
             localStorage.setItem('shibaPlayerLevel', state.playerLevel);
+            localStorage.setItem('shibaXpToNextLevel', state.xpToNextLevel); // Save xpToNextLevel
             updateXPDisplay(amount); 
         }
 
         function updateXPDisplay(xpGained = 0) {
             const xpPercentage = (state.playerXP / state.xpToNextLevel) * 100;
             elements.xpBarFill.style.width = `${xpPercentage}%`;
-            elements.playerLevelDisplay.textContent = state.playerLevel; // Update the inner span
+            elements.playerLevelDisplay.textContent = state.playerLevel; 
 
             if (xpGained > 0) {
                 const xpText = document.createElement('span');
                 xpText.classList.add('xp-gain-text');
                 xpText.textContent = `+${xpGained} XP`;
-                
-                // Position the XP text top middle of the game container
-                const containerRect = elements.gameContainer.getBoundingClientRect();
-                xpText.style.top = `${containerRect.height * 0.15}px`; // 15% from the top
-                xpText.style.left = `${containerRect.width / 2}px`;
-                xpText.style.transform = `translateX(-50%)`; // Center horizontally
-                
-                elements.gameWorld.appendChild(xpText); 
-                setTimeout(() => xpText.remove(), 800); // Match animation duration
+                elements.gameContainer.appendChild(xpText); // Append to gameContainer for scaling consistency
+
+                // Adjust position based on current game scale
+                xpText.style.top = `${(elements.gameContainer.clientHeight * 0.15)}px`; 
+                xpText.style.left = `${(elements.gameContainer.clientWidth / 2)}px`;
+
+                setTimeout(() => xpText.remove(), 800); 
             }
         }
 
         function gameLoop() {
+            // All game logic calculations should be in BASE game units (e.g., pixels if game world were 800x400)
+            // Then, when applying to CSS, multiply by state.gameScale.
+
             state.velocityY += state.gravity;
             state.shibaY -= state.velocityY; 
 
-            if (state.shibaY <= state.groundHeight) {
-                state.shibaY = state.groundHeight;
+            if (state.shibaY <= state.groundHeight / state.gameScale) { // Compare in base units
+                state.shibaY = state.groundHeight / state.gameScale;
                 state.velocityY = 0;
                 state.isJumping = false; 
                 elements.shiba.style.transform = `translateY(0px) rotate(0deg)`; 
@@ -1415,25 +1446,38 @@
                 elements.shiba.style.transform = `translateY(0px) rotate(10deg)`; 
             }
 
-
-            elements.shibaContainer.style.bottom = `${state.shibaY}px`;
+            // Apply scaled position to CSS
+            elements.shibaContainer.style.bottom = `${state.shibaY * state.gameScale}px`;
 
             checkCollisions();
             checkItemPassage(); 
         }
 
         function checkCollisions() {
+            // Get Shiba's position and size in the scaled game world
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
+            // To account for the scaling of the game-world, we need to get collision rectangles relative to game-world.
+            // Or, more simply, use the scaled dimensions and positions directly from the DOM for collision detection.
+            
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
                 // Ensure item is still in the DOM and visible before checking collision
-                if (!item.parentNode || item.getBoundingClientRect().right < 0) return;
+                // The crucial fix for obstacle reappearance is here:
+                // Check if the item's left edge (in game-world units) is beyond the far left threshold
+                // The '-100px' in the CSS @keyframes moveItem `to` value means it moves beyond 0.
+                // We're checking against -100px here because that's where the animation ends and it should be visually gone.
+                // If it's already removed, item.parentNode will be null.
+                const itemStyle = getComputedStyle(item);
+                const itemLeft = parseFloat(itemStyle.left);
+                const itemWidth = item.offsetWidth; 
+
+                if (!item.parentNode || itemLeft + itemWidth < -50) { // If it's effectively off-screen to the left
+                    return; // Skip collision check and let checkItemPassage handle removal
+                }
 
                 const itemRect = item.getBoundingClientRect();
                 
-                // Increased collision overlap for more lenient detection
-                const collisionOverlapFactor = 0.35; // Slightly increased for better toy/power-up pickup feeling
+                const collisionOverlapFactor = 0.35; 
                 
-                // Collision check
                 if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                     shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
                     shibaRect.bottom > itemRect.top + (itemRect.height * collisionOverlapFactor) &&
@@ -1444,15 +1488,14 @@
                             activateInvincibility();
                             item.remove(); 
                             item.setAttribute('data-collected', 'true');
-                            state.toysCollectedInStreak = 0; // Reset streak if chicken collected
+                            state.toysCollectedInStreak = 0; 
                         } else if (item.classList.contains('toy-item')) {
-                            updateScore(10, 150); // Increased score and XP for toys
+                            updateScore(10, 150); 
                             item.remove();
                             item.setAttribute('data-collected', 'true');
-                            state.toysCollectedInStreak++; // Increment toy streak
-                            checkFireConfetti(); // Check for fire confetti
+                            state.toysCollectedInStreak++; 
+                            checkFireConfetti(); 
                         }
-                        // Only obstacles cause game over if not invincible
                         else if (item.classList.contains('obstacle')) { 
                             item.setAttribute('data-collided', 'true');
                             if (!state.isInvincible) {
@@ -1460,7 +1503,7 @@
                             } else {
                                 item.remove(); 
                             }
-                            state.toysCollectedInStreak = 0; // Reset streak if obstacle hit
+                            state.toysCollectedInStreak = 0; 
                         }
                     }
                 }
@@ -1469,20 +1512,30 @@
 
         function checkItemPassage() {
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // Remove item if its right edge is completely off-screen to the left
-                // Adding a small buffer (-10px) to ensure it's truly gone
-                if (item.getBoundingClientRect().right < -10 && item.parentNode) {
-                    // Only obstacles give points for passing if they haven't been collided with (invincible)
+                // Get the current computed left position of the item in the game-world's coordinate space
+                // (before game-world's overall scale transform is applied, if that's how you're thinking of it)
+                const itemRect = item.getBoundingClientRect(); // This gives position relative to viewport
+                const gameWorldRect = elements.gameWorld.getBoundingClientRect();
+
+                // Calculate item's right edge relative to the game-world's left edge
+                // This gives us its "true" position within the *scaled* game world
+                const itemRightInGameWorld = itemRect.right - gameWorldRect.left;
+
+                // We want to remove it when it's completely past the left edge of the scaled game world.
+                // The 'to { left: -100px; }' in CSS means it goes 100px off the base game width.
+                // So, in the scaled world, it should be removed when its right edge is past -100px * scale.
+                const removalThreshold = -100 * state.gameScale; 
+                
+                if (itemRightInGameWorld < removalThreshold && item.parentNode) {
                     if (item.classList.contains('obstacle') && item.dataset.passed === 'false' && !item.hasAttribute('data-collided')) {
-                        updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
-                        item.dataset.passed = 'true'; // Mark as passed
+                        updateScore(1, 25); 
+                        item.dataset.passed = 'true'; 
                     } else if ((item.classList.contains('toy-item') || item.classList.contains('power-up')) && !item.hasAttribute('data-collected')) {
-                        // If toys or power-ups are passed/missed, and not collected, reset streak for toys
                         if (item.classList.contains('toy-item')) {
                             state.toysCollectedInStreak = 0;
                         }
                     }
-                    item.remove(); // Remove all types of items once they go off screen
+                    item.remove(); 
                 }
             });
         }
@@ -1501,14 +1554,26 @@
         
         function createPoofEffect() {
             const shibaRect = elements.shiba.getBoundingClientRect();
-            const containerRect = elements.gameContainer.getBoundingClientRect();
+            const gameWorldRect = elements.gameWorld.getBoundingClientRect(); // Position relative to game world
+            
             for (let i = 0; i < 15; i++) {
                 const p = document.createElement('div');
                 p.textContent = '🐕';
                 p.classList.add('particle');
-                p.style.top = (shibaRect.top - containerRect.top + shibaRect.height / 2) + 'px';
-                p.style.left = (shibaRect.left - containerRect.left + shibaRect.width / 2) + 'px';
-                p.style.transform = `rotate(${Math.random() * 360}deg) translateX(${Math.random() * 60 - 30}px) translateY(${Math.random() * 60 - 30}px)`;
+                
+                // Position particles relative to the game-world's origin
+                // Calculate shiba's center relative to game-world's top-left corner
+                const shibaCenterGameX = shibaRect.left - gameWorldRect.left + shibaRect.width / 2;
+                const shibaCenterGameY = shibaRect.top - gameWorldRect.top + shibaRect.height / 2;
+
+                p.style.top = `${shibaCenterGameY}px`;
+                p.style.left = `${shibaCenterGameX}px`;
+                
+                // Randomize particle movement relative to shiba's scaled size
+                const randomX = (Math.random() * 60 - 30) * state.gameScale;
+                const randomY = (Math.random() * 60 - 30) * state.gameScale;
+                p.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) translateX(${randomX}px) translateY(${randomY}px)`;
+                
                 elements.gameWorld.appendChild(p);
                 setTimeout(() => p.remove(), 800);
             }
@@ -1516,13 +1581,16 @@
 
         function createConfetti() {
             const numConfetti = 50;
-            const containerRect = elements.gameContainer.getBoundingClientRect();
+            const gameWorldRect = elements.gameWorld.getBoundingClientRect();
             for (let i = 0; i < numConfetti; i++) {
                 const confetti = document.createElement('div');
                 confetti.classList.add('confetti');
                 confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
-                confetti.style.left = Math.random() * containerRect.width + 'px';
-                confetti.style.top = (Math.random() * -containerRect.height / 2) + 'px'; 
+                
+                // Position confetti relative to the game world
+                confetti.style.left = Math.random() * gameWorldRect.width + 'px';
+                confetti.style.top = (Math.random() * -gameWorldRect.height / 2) + 'px'; 
+                
                 confetti.style.animationDelay = (Math.random() * 0.8) + 's';
                 confetti.style.animationDuration = (2 + Math.random() * 1.5) + 's'; 
                 
@@ -1534,16 +1602,19 @@
         }
 
         function createFireConfetti() {
-            const numFireConfetti = 30; // Fewer, but more impactful
-            const containerRect = elements.gameContainer.getBoundingClientRect();
+            const numFireConfetti = 30; 
+            const gameWorldRect = elements.gameWorld.getBoundingClientRect();
             for (let i = 0; i < numFireConfetti; i++) {
                 const fireConfetti = document.createElement('div');
                 fireConfetti.classList.add('fire-confetti');
                 fireConfetti.textContent = EMOJIS.fireConfetti;
-                fireConfetti.style.left = Math.random() * containerRect.width + 'px';
-                fireConfetti.style.top = (Math.random() * -containerRect.height / 3) + 'px'; // Start higher
+                
+                // Position fire confetti relative to the game world
+                fireConfetti.style.left = Math.random() * gameWorldRect.width + 'px';
+                fireConfetti.style.top = (Math.random() * -gameWorldRect.height / 3) + 'px'; 
+                
                 fireConfetti.style.animationDelay = (Math.random() * 0.5) + 's';
-                fireConfetti.style.animationDuration = (1 + Math.random() * 0.5) + 's'; // Faster animation
+                fireConfetti.style.animationDuration = (1 + Math.random() * 0.5) + 's'; 
                 fireConfetti.style.transform = `rotate(${Math.random() * 360}deg)`;
 
                 elements.gameWorld.appendChild(fireConfetti);
@@ -1556,7 +1627,6 @@
             clearInterval(state.gameLoopInterval);
             clearInterval(state.obstacleInterval);
             
-            // Clear all special effect intervals
             clearInterval(state.bubbleInterval);
             clearInterval(state.rainInterval);
             clearInterval(state.leafInterval);
@@ -1564,10 +1634,10 @@
             clearInterval(state.snowInterval);
             clearInterval(state.starInterval);
 
-            // Remove all dynamic elements from the DOM
             document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star, .confetti, .fire-confetti, .xp-gain-text, .particle').forEach(el => el.remove());
 
-            ['ground', 'clouds'].forEach(id => elements[id].style.animationPlayState = 'paused');
+            elements.ground.style.animationPlayState = 'paused';
+            elements.clouds.style.animationPlayState = 'paused';
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(el => {
                 el.style.animationPlayState = 'paused';
             });
@@ -1590,7 +1660,7 @@
             elements.shibaContainer.style.display = 'none'; 
             elements.invincibleMessage.classList.remove('visible'); 
             
-            endGameCleanup(); // Call the cleanup function
+            endGameCleanup(); 
 
             let newHighScoreSet = false;
             if (state.score > state.highScore) {
@@ -1618,14 +1688,14 @@
         }
 
         function restartGame() {
-            endGameCleanup(); // Ensure all elements and intervals are reset
+            endGameCleanup(); 
             
             elements.shibaContainer.style.display = 'flex'; 
             elements.shiba.classList.remove('invincible');
             state.isInvincible = false;
             elements.invincibleMessage.classList.remove('visible'); 
             
-            state.isGameOver = true; // Set to true to allow startGame to reset properly
+            state.isGameOver = true; 
             state.score = 0;
             state.lastBiomeChangeScore = 0; 
             elements.scoreNumber.textContent = 0;
@@ -1637,7 +1707,7 @@
             elements.playButton.style.animation = 'wiggle 2s infinite ease-in-out'; 
             elements.playButton.classList.remove('clicked');
 
-            startIntro(); // Restart the game from the intro countdown
+            startIntro(); 
         }
         
         init();
