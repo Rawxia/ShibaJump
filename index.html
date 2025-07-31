@@ -1191,7 +1191,10 @@
             }
         };
 
-
+        // ==================================================================
+        // ✨ FIXED CODE STARTS HERE ✨
+        // ==================================================================
+        
         function createItem() {
             if (state.isGameOver) return;
             
@@ -1215,10 +1218,8 @@
                 const randomToy = TOY_IMAGES[Math.floor(Math.random() * TOY_IMAGES.length)];
                 item.classList.add(randomToy.replace('.png', '')); // Add class like 'Toy1'
                 item.style.backgroundImage = `url('${randomToy}')`;
-                // Toys retain their specific styles and sizes, no textContent needed
             } else {
                 item.classList.add('obstacle');
-                // For obstacles, explicitly set textContent for emojis
                 if (isFlying) {
                     item.textContent = currentBiome.flyingObstacles[Math.floor(Math.random() * currentBiome.flyingObstacles.length)];
                 } else {
@@ -1239,7 +1240,6 @@
 
             if (item.classList.contains('flying-type')) {
                 item.style.bottom = `calc(${state.groundHeight}px + 80px + ${Math.random() * 70}px)`; 
-                // Ensure flying toy-items also have correct font-size if they are emojis
                 if (item.classList.contains('toy-item') && item.textContent !== '') { 
                     item.style.fontSize = `var(--obstacle-size)`; 
                 }
@@ -1247,8 +1247,45 @@
                 item.style.bottom = `${state.groundHeight}px`; 
             }
 
-            item.dataset.passed = 'false'; // Track if this item has been passed
+            item.dataset.passed = 'false'; // Track if this item has been passed for scoring purposes
+
+            // This listener automatically removes the item from the game when its animation finishes.
+            // This prevents it from snapping back into the screen and causing a false collision.
+            item.addEventListener('animationend', () => {
+                // If a toy is missed (reaches the end without being collected), reset the streak.
+                if (item.classList.contains('toy-item') && !item.hasAttribute('data-collected')) {
+                    state.toysCollectedInStreak = 0;
+                }
+                item.remove();
+            });
         }
+        
+        function checkItemPassage() {
+            const shibaRect = elements.shibaContainer.getBoundingClientRect();
+
+            // This function now ONLY handles scoring for passing obstacles.
+            // Cleanup is handled by the 'animationend' listener added in createItem.
+            document.querySelectorAll('.obstacle').forEach(obstacle => {
+                // Check if the obstacle hasn't been scored yet and has moved past the player.
+                if (obstacle.dataset.passed === 'false') {
+                    const obstacleRect = obstacle.getBoundingClientRect();
+                    // Award points once the obstacle's right edge is behind the shiba's left edge.
+                    if (obstacleRect.right < shibaRect.left) {
+                        // Ensure we don't score points for an obstacle we hit while invincible.
+                        if (!obstacle.hasAttribute('data-collided')) {
+                            updateScore(1, 25); // Score 1 point and 25 XP for a successful jump.
+                        }
+                        // Mark as 'passed' to prevent scoring the same obstacle multiple times.
+                        obstacle.dataset.passed = 'true';
+                    }
+                }
+            });
+        }
+
+        // ==================================================================
+        // ✨ FIXED CODE ENDS HERE ✨
+        // ==================================================================
+
 
         function updateScore(scoreAmount = 1, xpAmount = 0) {
             state.score += scoreAmount;
@@ -1408,31 +1445,6 @@
                             state.toysCollectedInStreak = 0; // Reset streak if obstacle hit
                         }
                     }
-                }
-            });
-        }
-
-        function checkItemPassage() {
-            const shibaRect = elements.shibaContainer.getBoundingClientRect();
-            document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // Check if item is off-screen
-                if (item.getBoundingClientRect().right < -50 && item.parentNode) {
-                    // Only obstacles give points for passing
-                    if (item.classList.contains('obstacle') && item.dataset.passed === 'false') {
-                        // Ensure it wasn't already marked as collided (if invincible)
-                        if (!item.hasAttribute('data-collided')) { 
-                            updateScore(1, 25); // Score 1 point and 25 XP for jumping over an obstacle
-                            item.dataset.passed = 'true'; // Mark as passed
-                        }
-                    } else if (item.classList.contains('toy-item') || item.classList.contains('power-up')) {
-                        // If toys or power-ups are passed/missed, remove them without scoring
-                        item.remove();
-                        // Reset toy streak if a toy is missed (passes off screen)
-                        if (item.classList.contains('toy-item')) {
-                            state.toysCollectedInStreak = 0;
-                        }
-                    }
-                    item.remove(); // Remove all types of items once they go off screen
                 }
             });
         }
