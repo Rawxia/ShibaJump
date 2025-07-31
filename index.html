@@ -17,9 +17,9 @@
             /* Dynamic sizes, will be set by JS based on gameScale */
             --shiba-size: 60px;
             --obstacle-size: 50px;
-            --toy-size: 70px; /* New variable for toys */
-            --ground-height-percent: 25%;
-            --ground-height: 0px; 
+            --toy-size: 70px; 
+            --ground-height-percent: 25%; /* Percentage of the BASE game height */
+            --ground-height: 0px; /* Actual px value, set by JS */
             
             /* Biome-specific colors (default to Sky) */
             --current-sky-color: #87CEEB; /* Sky Blue */
@@ -27,9 +27,13 @@
             --current-ground-color: #e0e0e0;
             --current-ground-border-color: #ccc;
 
-            /* Game world dimensions for scaling reference */
+            /* Base game world dimensions for internal calculations */
             --game-base-width: 800px;
             --game-base-height: 400px;
+
+            /* Speed variables for animations, adjusted by JS */
+            --ground-animation-duration: 4s;
+            --clouds-animation-duration: 25s;
         }
 
         body {
@@ -39,44 +43,37 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: var(--current-sky-color); /* Use biome color */
+            background-color: var(--current-sky-color); 
             font-family: 'Poppins', sans-serif;
             color: var(--text-color);
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-            transition: background-color 0.5s ease-in-out; /* Smooth biome transitions */
-        }
-
-        #game-container {
-            width: 90vw; 
-            height: 60vh;
-            /* Remove max-width/max-height here to allow it to expand on ultrawide.
-               The internal game-world will handle its aspect ratio. */
-            border-radius: 20px;
-            background: var(--current-sky-color); 
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center; 
-            align-items: center; 
+            overflow: hidden; /* Prevent body scroll */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
             transition: background-color 0.5s ease-in-out; 
         }
 
+        #game-container {
+            width: 90vw; /* Takes 90% of viewport width */
+            height: 60vh; /* Takes 60% of viewport height */
+            max-width: 800px; /* Never larger than 800px wide */
+            max-height: 400px; /* Never larger than 400px high */
+            aspect-ratio: 2 / 1; /* Maintain 2:1 aspect ratio */
+            background: var(--current-sky-color); 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden; /* Crucial to contain game elements within this boundary */
+            border-radius: 20px;
+            transition: background-color 0.5s ease-in-out; 
+        }
+
+        /* The game-world will now fill the game-container and be the actual rendering surface */
         #game-world {
             position: absolute;
-            /* These will be dynamically set by JS to maintain aspect ratio */
-            width: var(--game-base-width); 
-            height: var(--game-base-height);
-            transform-origin: center center; /* Ensure scaling is from center */
-            /* Scaled by JS: transform: scale(var(--game-scale)); */
-            overflow: hidden; /* Important for containing items */
-            display: flex;
-            justify-content: center; 
-            align-items: flex-end; 
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(var(--game-scale));
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            /* No scaling transform here, as it will be handled by scaling individual elements */
+            overflow: hidden; 
         }
         
         #clouds {
@@ -88,7 +85,7 @@
             background-image: var(--current-cloud-svg); 
             background-repeat: repeat-x;
             opacity: 0.7;
-            animation: moveClouds 25s linear infinite;
+            animation: moveClouds var(--clouds-animation-duration) linear infinite;
             transition: background-image 0.5s ease-in-out; 
         }
 
@@ -100,14 +97,15 @@
             bottom: 0;
             left: 0;
             border-top: 2px solid var(--current-ground-border-color); 
-            animation: moveGround 4s linear infinite;
+            animation: moveGround var(--ground-animation-duration) linear infinite;
             transition: background 0.5s ease-in-out, border-top-color 0.5s ease-in-out; 
         }
         
         #shiba-container {
             position: absolute;
             bottom: var(--ground-height); 
-            left: calc(20% - (var(--shiba-size) / 2)); /* Shiba now fixed at 20% from left */
+            left: 20%; 
+            transform: translateX(-50%); /* Center shiba horizontally at 20% mark */
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -129,7 +127,7 @@
             color: #fff;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
             position: absolute;
-            top: -25px; 
+            top: -25px; /* Adjust based on shiba size */
             white-space: nowrap; 
         }
         
@@ -143,7 +141,6 @@
         }
 
         .obstacle, .power-up, .toy-item {
-            /* Sizes are dynamic via JS now using var(--obstacle-size) etc. */
             width: var(--obstacle-size);
             height: var(--obstacle-size);
             background-size: contain;
@@ -152,8 +149,7 @@
             font-size: var(--obstacle-size); /* For emoji obstacles */
             line-height: 1;
             z-index: 10;
-            animation: moveItem var(--item-animation-duration) linear; /* Duration now a CSS variable */
-            left: 100%; /* Default starting position, ensures it's off-screen */
+            animation: moveItem var(--item-animation-duration) linear; 
         }
         
         .obstacle.ground-type, .power-up.ground-type, .toy-item.ground-type {
@@ -161,9 +157,8 @@
         }
 
         .obstacle.flying-type, .power-up.flying-type, .toy-item.flying-type {
-            /* These values are now relative to the scaled game world */
-            bottom: calc(var(--ground-height) + 100px); /* Base height above ground */
-            font-size: var(--obstacle-size); /* For emoji flying items */
+            bottom: calc(var(--ground-height) + var(--obstacle-flying-offset)); 
+            font-size: var(--obstacle-size); 
         }
 
         /* Toy specific styles */
@@ -195,7 +190,7 @@
             color: white;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
             z-index: 20;
-            margin-top: 35px; 
+            margin-top: 35px; /* Offset for XP bar */
         }
         #high-score-container { 
             position: absolute;
@@ -306,8 +301,8 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 100px; 
-            height: 20px;
+            width: 100px; /* Base width, scales down */
+            height: 20px; /* Base height, scales down */
             background-color: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
             overflow: hidden;
@@ -317,7 +312,7 @@
             justify-content: center; 
             align-items: center; 
             font-family: 'Press Start 2P', cursive;
-            font-size: 0.7em;
+            font-size: 0.7em; /* Base font size, scales down */
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
             white-space: nowrap; 
@@ -343,16 +338,14 @@
             position: absolute;
             color: #FFD700; 
             font-family: 'Press Start 2P', cursive; 
-            font-size: 1.2em; 
+            font-size: 1.2em; /* Base font size, scales down */
             font-weight: bold;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.8); 
             animation: xp-pop-fade 0.8s ease-out forwards; 
             pointer-events: none; 
             z-index: 102; 
             white-space: nowrap;
-            top: 15%; 
-            left: 50%;
-            transform: translateX(-50%); 
+            /* Positioned relative to game-container, scaled by JS if needed */
         }
 
         @keyframes xp-pop-fade {
@@ -481,7 +474,7 @@
         }
         @keyframes rain-fall {
             0% { transform: translateY(-10px); opacity: 0.8; }
-            100% { transform: translateY(var(--game-base-height)); opacity: 0; } 
+            100% { transform: translateY(100%); opacity: 0; } /* Use 100% relative to parent */
         }
 
         #invincible-message {
@@ -521,7 +514,7 @@
         }
         @keyframes leaf-fall {
             0% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); opacity: 1; }
-            100% { transform: translateY(calc(var(--game-base-height) + 50px)) rotate(calc(var(--rotation, 0deg) + 360deg)); opacity: 0; }
+            100% { transform: translateY(100%) rotate(calc(var(--rotation, 0deg) + 360deg)); opacity: 0; } /* Use 100% relative to parent */
         }
 
         .dust-particle {
@@ -554,7 +547,7 @@
         }
         @keyframes snow-fall {
             0% { transform: translateY(-10px) translateX(0px); opacity: 0.8; }
-            100% { transform: translateY(var(--game-base-height)) translateX(var(--drift-x)); opacity: 0; } 
+            100% { transform: translateY(100%) translateX(var(--drift-x)); opacity: 0; } /* Use 100% relative to parent */
         }
 
         .star {
@@ -592,10 +585,10 @@
 
         @keyframes moveGround { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes moveClouds { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        /* Item animation now moves them relative to the game-world's width */
+        /* Item animation now moves them relative to the game-world's width (100% of it) */
         @keyframes moveItem { 
-            from { left: var(--game-base-width); } 
-            to { left: -100px; } 
+            from { left: 100%; } 
+            to { left: calc(0% - var(--obstacle-size)); } /* Move off-screen by item's own width */
         } 
         @keyframes flash { 50% { opacity: 0.3; } }
         @keyframes particle-poof {
@@ -633,6 +626,9 @@
                 border-radius: 0; 
                 height: 100vh; 
                 width: 100vw; 
+                /* Remove max-width/height here as it's full screen anyway */
+                max-width: none;
+                max-height: none;
             }
             /* Score, XP bar, etc. outside game-world should adapt */
             #score-container { font-size: 1.2em; right: auto; left: 10px; margin-top: 30px;} 
@@ -677,7 +673,7 @@
 <body>
 
     <div id="game-container">
-        <div id="game-world">
+        <div id="game-world"> 
             <div id="clouds"></div>
             <div id="ground"></div>
             <div id="shiba-container">
@@ -726,7 +722,7 @@
             shibaContainer: document.getElementById('shiba-container'), 
             shiba: document.getElementById('shiba'),
             shibaName: document.getElementById('shiba-name'), 
-            gameWorld: document.getElementById('game-world'),
+            gameWorld: document.getElementById('game-world'), // The new game-world div
             scoreDisplay: document.getElementById('score'),
             scoreNumber: document.getElementById('score-number'), 
             highScoreDisplay: document.getElementById('high-score'),
@@ -740,7 +736,7 @@
             newHighScoreMessage: document.getElementById('new-high-score-message'),
             ground: document.getElementById('ground'),
             clouds: document.getElementById('clouds'),
-            gameContainer: document.getElementById('game-container'),
+            gameContainer: document.getElementById('game-container'), // The main, responsive container
             body: document.body,
             splashHighScore: document.getElementById('splash-high-score'), 
             playerLevelDisplay: document.getElementById('player-level'),
@@ -766,7 +762,7 @@
             jumpStrength: -20, 
             maxHoldJumpBoost: -10, 
             jumpHoldTimer: null,
-            groundHeight: 0, 
+            groundHeight: 0, // This will be dynamic based on scaled height
             flyingObstacleThreshold: 10, 
             currentBiomeIndex: 0, 
             lastBiomeChangeScore: 0, 
@@ -775,7 +771,7 @@
             minObstacleInterval: 700, 
             playerXP: parseInt(localStorage.getItem('shibaPlayerXP')) || 0,
             playerLevel: parseInt(localStorage.getItem('shibaPlayerLevel')) || 1,
-            xpToNextLevel: parseInt(localStorage.getItem('shibaXpToNextLevel')) || 1000, // Load saved or default
+            xpToNextLevel: parseInt(localStorage.getItem('shibaXpToNextLevel')) || 1000, 
             biomeOrder: [], 
             biomeCurrentIndexInOrder: 0,
             bubbleInterval: null, 
@@ -788,10 +784,17 @@
             obstacleBaseSpeed: 2.5, 
             toysCollectedInStreak: 0,
             
-            // New for dynamic scaling
-            baseGameWidth: 800, // Reference width for internal game elements
-            baseGameHeight: 400, // Reference height for internal game elements
-            gameScale: 1 // Current scaling factor for the game world
+            // New for dynamic scaling based on current game-container size
+            gameScale: 1, // Current scaling factor for internal game elements
+            shibaBaseSize: 60, // Original pixel size
+            obstacleBaseSize: 50, // Original pixel size
+            toyBaseSize: 70, // Original pixel size
+            // Base flying offset in original design pixels
+            obstacleFlyingBaseOffset: 100, 
+            xpTextBaseFontSize: 1.2, // original 1.2em
+            invincibleMessageBaseFontSize: 2, // original 2em
+            shibaNameBaseFontSize: 0.8, // original 0.8em
+            scoreBaseFontSize: 1.5 // original 1.5em
         };
         
         const EMOJIS = {
@@ -967,7 +970,7 @@
                 bubble.style.width = `${Math.random() * 10 + 5}px`;
                 bubble.style.height = bubble.style.width;
                 bubble.style.bottom = `${state.groundHeight}px`; 
-                bubble.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                bubble.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
                 
                 const driftAmount = Math.random() > 0.5 ? 20 : -20;
                 bubble.style.setProperty('--bubble-drift', `${driftAmount}px`); 
@@ -987,7 +990,7 @@
                 }
                 const raindrop = document.createElement('div');
                 raindrop.classList.add('raindrop');
-                raindrop.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                raindrop.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
                 raindrop.style.animationDuration = `${Math.random() * 0.8 + 0.5}s`; 
                 raindrop.style.animationDelay = `${Math.random() * 1}s`; 
                 elements.gameWorld.appendChild(raindrop);
@@ -1004,7 +1007,7 @@
                 }
                 const leaf = document.createElement('div');
                 leaf.classList.add('leaf');
-                leaf.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                leaf.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
                 leaf.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
                 leaf.style.setProperty('--delay', `${Math.random() * 2}s`);
                 leaf.style.setProperty('--rotation', `${Math.random() * 360}deg`);
@@ -1021,12 +1024,12 @@
                 }
                 const dust = document.createElement('div');
                 dust.classList.add('dust-particle');
-                dust.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
-                dust.style.bottom = `${state.groundHeight + Math.random() * 20}px`; 
+                dust.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
+                dust.style.bottom = `${state.groundHeight + Math.random() * 20 * state.gameScale}px`; // Scale random offset too
                 dust.style.setProperty('--duration', `${Math.random() * 3 + 1}s`);
                 dust.style.setProperty('--delay', `${Math.random() * 1}s`);
-                dust.style.setProperty('--drift-x', `${Math.random() * 100 - 50}px`); 
-                dust.style.setProperty('--drift-y', `${Math.random() * -50}px`); 
+                dust.style.setProperty('--drift-x', `${(Math.random() * 100 - 50) * state.gameScale}px`); // Scale drift
+                dust.style.setProperty('--drift-y', `${(Math.random() * -50) * state.gameScale}px`); // Scale drift
                 elements.gameWorld.appendChild(dust);
                 setTimeout(() => dust.remove(), parseFloat(dust.style.getPropertyValue('--duration')) * 1000 + parseFloat(dust.style.getPropertyValue('--delay')) * 1000);
             }, 100);
@@ -1040,10 +1043,10 @@
                 }
                 const snowflake = document.createElement('div');
                 snowflake.classList.add('snowflake');
-                snowflake.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
+                snowflake.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
                 snowflake.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
                 snowflake.style.setProperty('--delay', `${Math.random() * 2}s`);
-                snowflake.style.setProperty('--drift-x', `${Math.random() * 50 - 25}px`); 
+                snowflake.style.setProperty('--drift-x', `${(Math.random() * 50 - 25) * state.gameScale}px`); // Scale drift
                 elements.gameWorld.appendChild(snowflake);
                 setTimeout(() => snowflake.remove(), parseFloat(snowflake.style.getPropertyValue('--duration')) * 1000 + parseFloat(snowflake.style.getPropertyValue('--delay')) * 1000);
             }, 80);
@@ -1057,8 +1060,8 @@
                 }
                 const star = document.createElement('div');
                 star.classList.add('star');
-                star.style.left = `${Math.random() * state.baseGameWidth}px`; // Use baseGameWidth for positioning
-                star.style.top = `${Math.random() * (state.baseGameHeight - state.groundHeight - 50)}px`; 
+                star.style.left = `${Math.random() * elements.gameWorld.clientWidth}px`; // Position relative to gameWorld
+                star.style.top = `${Math.random() * (elements.gameWorld.clientHeight - state.groundHeight - (50 * state.gameScale))}px`; // Scale top offset
                 star.style.setProperty('--duration', `${Math.random() * 3 + 1.5}s`);
                 star.style.setProperty('--delay', `${Math.random() * 2}s`);
                 elements.gameWorld.appendChild(star);
@@ -1070,56 +1073,48 @@
             const containerWidth = elements.gameContainer.clientWidth;
             const containerHeight = elements.gameContainer.clientHeight;
 
-            // Calculate scale based on fitting the base game dimensions into the container
-            // Maintain aspect ratio: (base width / base height) = (container width / container height)
-            // If container is wider than base aspect ratio, scale by height
-            // If container is taller than base aspect ratio, scale by width
-            const gameAspectRatio = state.baseGameWidth / state.baseGameHeight;
-            const containerAspectRatio = containerWidth / containerHeight;
+            // Calculate the current scale based on the smaller dimension relative to a "base" height
+            // We'll treat the 400px height as our reference for scaling elements.
+            // When game-container is 800x400, scale will be 1.
+            // When game-container is smaller (e.g., on mobile), scale will be < 1.
+            state.gameScale = containerHeight / 400; // Reference to original 400px height
 
-            let scale;
-            if (containerAspectRatio > gameAspectRatio) {
-                // Container is wider than the game base, scale based on height
-                scale = containerHeight / state.baseGameHeight;
-            } else {
-                // Container is taller (or same aspect ratio), scale based on width
-                scale = containerWidth / state.baseGameWidth;
-            }
+            // Update CSS variables for all dynamically sized elements
+            document.documentElement.style.setProperty('--shiba-size', `${state.shibaBaseSize * state.gameScale}px`);
+            document.documentElement.style.setProperty('--obstacle-size', `${state.obstacleBaseSize * state.gameScale}px`);
+            document.documentElement.style.setProperty('--toy-size', `${state.toyBaseSize * state.gameScale}px`); 
+            
+            // Flying obstacle offset
+            document.documentElement.style.setProperty('--obstacle-flying-offset', `${state.obstacleFlyingBaseOffset * state.gameScale}px`);
 
-            state.gameScale = scale;
-            elements.gameWorld.style.setProperty('--game-scale', scale);
-
-            // Update CSS variables for scaled elements.
-            // These values are based on the *original* design sizes before scaling.
-            document.documentElement.style.setProperty('--shiba-size', `${60 * scale}px`);
-            document.documentElement.style.setProperty('--obstacle-size', `${50 * scale}px`);
-            document.documentElement.style.setProperty('--toy-size', `${70 * scale}px`); 
+            // Ground height is a percentage of the original game height, then scaled
+            state.groundHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100 * containerHeight; // This is a pixel value
+            document.documentElement.style.setProperty('--ground-height', `${state.groundHeight}px`);
             
-            state.groundHeight = state.baseGameHeight * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ground-height-percent')) / 100);
-            document.documentElement.style.setProperty('--ground-height', `${state.groundHeight * scale}px`);
-            
-            // Adjust font sizes for elements outside game-world that need specific scaling
-            elements.scoreDisplay.style.fontSize = `${1.5 * scale}em`;
-            elements.highScoreDisplay.style.fontSize = `${1.5 * scale}em`;
-            elements.xpLevelText.style.fontSize = `${0.7 * scale}em`;
-            elements.xpLevelText.parentNode.style.width = `${100 * scale}px`;
-            elements.xpLevelText.parentNode.style.height = `${20 * scale}px`;
-            elements.invincibleMessage.style.fontSize = `${2 * scale}em`;
-            elements.shibaName.style.fontSize = `${0.8 * scale}em`;
-            
-            // If the Shiba is on the ground, ensure its position is updated after groundHeight changes
+            // Adjust Shiba's vertical position relative to the new ground height
             if (!state.isJumping) {
-                state.shibaY = state.groundHeight / scale; // Convert to baseGameHeight units for logic
-                elements.shibaContainer.style.bottom = `${state.groundHeight}px`; // Display in scaled units
+                state.shibaY = state.groundHeight; // Shiba's Y position is now in actual pixels
+                elements.shibaContainer.style.bottom = `${state.shibaY}px`;
             }
+            
+            // Adjust font sizes for elements outside the game-world based on scale
+            elements.scoreDisplay.style.fontSize = `${state.scoreBaseFontSize * state.gameScale}em`;
+            elements.highScoreDisplay.style.fontSize = `${state.scoreBaseFontSize * state.gameScale}em`;
+            
+            elements.xpLevelText.style.fontSize = `${0.7 * state.gameScale}em`;
+            elements.xpLevelText.parentNode.style.width = `${100 * state.gameScale}px`;
+            elements.xpLevelText.parentNode.style.height = `${20 * state.gameScale}px`;
+
+            elements.invincibleMessage.style.fontSize = `${state.invincibleMessageBaseFontSize * state.gameScale}em`;
+            elements.shibaName.style.fontSize = `${state.shibaNameBaseFontSize * state.gameScale}em`;
             
             // Re-adjust item bottom positions for already existing items
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
                 if (item.classList.contains('ground-type')) {
                     item.style.bottom = `${state.groundHeight}px`;
                 } else if (item.classList.contains('flying-type')) {
-                    // Flying items maintain their relative position above ground
-                    item.style.bottom = `calc(${state.groundHeight}px + ${100 * scale}px + ${Math.random() * 70 * scale}px)`;
+                    // Re-calculate flying height based on current scale
+                    item.style.bottom = `calc(${state.groundHeight}px + ${state.obstacleFlyingBaseOffset * state.gameScale}px + ${Math.random() * 70 * state.gameScale}px)`;
                 }
             });
 
@@ -1129,7 +1124,7 @@
                 let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier);
                 item.style.setProperty('--item-animation-duration', `${animationSpeed}s`);
                 // Force a re-animation by briefly setting to 'none' and then back.
-                // This ensures 'from' and 'to' values (like `left: var(--game-base-width);`) are re-evaluated.
+                // This ensures 'from' and 'to' values (like `left: 100%;`) are re-evaluated based on new container size.
                 const currentAnimation = item.style.animation;
                 item.style.animation = 'none';
                 void item.offsetWidth; // Trigger reflow
@@ -1140,9 +1135,7 @@
         }
 
         function init() {
-            // Set initial game world dimensions as CSS variables for the @keyframes
-            document.documentElement.style.setProperty('--game-base-width', `${state.baseGameWidth}px`);
-            document.documentElement.style.setProperty('--game-base-height', `${state.baseGameHeight}px`);
+            // No need for --game-base-width/height here in root, they're internal reference values now.
 
             resizeGame(); // Set initial sizes and scale
             window.addEventListener('resize', resizeGame); // Update sizes on resize
@@ -1206,9 +1199,9 @@
             elements.ground.style.animationPlayState = 'running';
             elements.clouds.style.animationPlayState = 'running';
 
-            state.shibaY = state.groundHeight / state.gameScale; // Store in base game units for consistent logic
+            state.shibaY = state.groundHeight; // Shiba Y position is now in actual pixels
             state.velocityY = 0;
-            elements.shibaContainer.style.bottom = `${state.shibaY * state.gameScale}px`; // Apply scale for display
+            elements.shibaContainer.style.bottom = `${state.shibaY}px`; 
             elements.shiba.style.transform = `translateY(0px)`; 
 
             generateBiomeOrder();
@@ -1241,12 +1234,13 @@
             if (!state.isGameOver && !state.isJumping && (isKeyEvent || (isGameAreaInteraction && (isMouseEvent || isTouchEvent)))) {
                 e.preventDefault(); 
                 state.isJumping = true;
-                state.velocityY = state.jumpStrength; 
+                // Jump strength also needs to scale
+                state.velocityY = state.jumpStrength * state.gameScale; 
                 elements.shiba.style.transform = `translateY(0px) rotate(-10deg)`; 
                 
                 state.jumpHoldTimer = setTimeout(() => {
                     if (state.isJumping) { 
-                        state.velocityY += state.maxHoldJumpBoost; 
+                        state.velocityY += state.maxHoldJumpBoost * state.gameScale; 
                     }
                 }, 50); 
             }
@@ -1306,26 +1300,21 @@
             if (isFlying) item.classList.add('flying-type');
             else item.classList.add('ground-type');
 
-            elements.gameWorld.appendChild(item);
+            elements.gameWorld.appendChild(item); // Append to game-world
 
-            // Set initial position to the right before animation starts
-            // item.style.left is set by the CSS animation "from" keyframe to var(--game-base-width)
-            // No explicit setting here is needed as animation handles it.
-            
             const speedMultiplier = 1 + (state.score * 0.01); 
             let animationSpeed = Math.max(0.8, state.obstacleBaseSpeed / speedMultiplier); 
             
             item.style.setProperty('--item-animation-duration', `${animationSpeed}s`);
 
             if (item.classList.contains('flying-type')) {
-                // These values are now relative to the BASE game height (400px)
-                item.style.bottom = `calc(${state.groundHeight / state.gameScale}px + ${100}px + ${Math.random() * 70}px)`; 
+                // Now these values are based on the BASE offset, and CSS variables apply the scale
+                item.style.bottom = `calc(var(--ground-height) + var(--obstacle-flying-offset) + ${Math.random() * 70 * state.gameScale}px)`; 
             } else {
-                item.style.bottom = `${state.groundHeight / state.gameScale}px`; 
+                item.style.bottom = `var(--ground-height)`; 
             }
 
-            item.dataset.passed = 'false'; // Track if this item has been passed
-            item.dataset.originalLeft = state.baseGameWidth; // Store initial left position in game world units
+            item.dataset.passed = 'false'; 
         }
 
         function updateScore(scoreAmount = 1, xpAmount = 0) {
@@ -1342,11 +1331,9 @@
 
         function checkGameSpeed() {
             const speedFactor = 1 + (state.score * 0.015); 
-            const newGroundAnimationDuration = Math.max(1.0, state.baseGameSpeed / speedFactor); 
-            const newCloudAnimationDuration = Math.max(5, 25 / speedFactor); 
-
-            elements.ground.style.animationDuration = `${newGroundAnimationDuration}s`;
-            elements.clouds.style.animationDuration = `${newCloudAnimationDuration}s`;
+            // Update CSS variables, not directly styles
+            document.documentElement.style.setProperty('--ground-animation-duration', `${Math.max(1.0, state.baseGameSpeed / speedFactor)}s`);
+            document.documentElement.style.setProperty('--clouds-animation-duration', `${Math.max(5, 25 / speedFactor)}s`);
 
             const newObstacleInterval = Math.max(state.minObstacleInterval, state.normalObstacleInterval / speedFactor);
             if (Math.abs(newObstacleInterval - state.lastObstacleInterval) > 50) { 
@@ -1403,7 +1390,7 @@
             }
             localStorage.setItem('shibaPlayerXP', state.playerXP);
             localStorage.setItem('shibaPlayerLevel', state.playerLevel);
-            localStorage.setItem('shibaXpToNextLevel', state.xpToNextLevel); // Save xpToNextLevel
+            localStorage.setItem('shibaXpToNextLevel', state.xpToNextLevel); 
             updateXPDisplay(amount); 
         }
 
@@ -1416,25 +1403,25 @@
                 const xpText = document.createElement('span');
                 xpText.classList.add('xp-gain-text');
                 xpText.textContent = `+${xpGained} XP`;
-                elements.gameContainer.appendChild(xpText); // Append to gameContainer for scaling consistency
+                // Append to game-container (the main scaling div) to ensure its position is correct
+                elements.gameContainer.appendChild(xpText); 
 
-                // Adjust position based on current game scale
-                xpText.style.top = `${(elements.gameContainer.clientHeight * 0.15)}px`; 
-                xpText.style.left = `${(elements.gameContainer.clientWidth / 2)}px`;
+                // Position relative to game-container. CSS will handle the transformX(-50%)
+                xpText.style.top = `${elements.gameContainer.clientHeight * 0.15}px`; 
+                xpText.style.left = `${elements.gameContainer.clientWidth / 2}px`;
 
                 setTimeout(() => xpText.remove(), 800); 
             }
         }
 
         function gameLoop() {
-            // All game logic calculations should be in BASE game units (e.g., pixels if game world were 800x400)
-            // Then, when applying to CSS, multiply by state.gameScale.
-
-            state.velocityY += state.gravity;
+            // Gravity and jump strength are scaled in handleJumpStart
             state.shibaY -= state.velocityY; 
+            state.velocityY += state.gravity * state.gameScale; // Gravity also needs to scale
 
-            if (state.shibaY <= state.groundHeight / state.gameScale) { // Compare in base units
-                state.shibaY = state.groundHeight / state.gameScale;
+            // Collision with ground based on scaled groundHeight
+            if (state.shibaY <= state.groundHeight) { 
+                state.shibaY = state.groundHeight;
                 state.velocityY = 0;
                 state.isJumping = false; 
                 elements.shiba.style.transform = `translateY(0px) rotate(0deg)`; 
@@ -1447,7 +1434,7 @@
             }
 
             // Apply scaled position to CSS
-            elements.shibaContainer.style.bottom = `${state.shibaY * state.gameScale}px`;
+            elements.shibaContainer.style.bottom = `${state.shibaY}px`;
 
             checkCollisions();
             checkItemPassage(); 
@@ -1456,27 +1443,11 @@
         function checkCollisions() {
             // Get Shiba's position and size in the scaled game world
             const shibaRect = elements.shibaContainer.getBoundingClientRect();
-            // To account for the scaling of the game-world, we need to get collision rectangles relative to game-world.
-            // Or, more simply, use the scaled dimensions and positions directly from the DOM for collision detection.
             
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // Ensure item is still in the DOM and visible before checking collision
-                // The crucial fix for obstacle reappearance is here:
-                // Check if the item's left edge (in game-world units) is beyond the far left threshold
-                // The '-100px' in the CSS @keyframes moveItem `to` value means it moves beyond 0.
-                // We're checking against -100px here because that's where the animation ends and it should be visually gone.
-                // If it's already removed, item.parentNode will be null.
-                const itemStyle = getComputedStyle(item);
-                const itemLeft = parseFloat(itemStyle.left);
-                const itemWidth = item.offsetWidth; 
-
-                if (!item.parentNode || itemLeft + itemWidth < -50) { // If it's effectively off-screen to the left
-                    return; // Skip collision check and let checkItemPassage handle removal
-                }
-
                 const itemRect = item.getBoundingClientRect();
                 
-                const collisionOverlapFactor = 0.35; 
+                const collisionOverlapFactor = 0.35; // Still applies as a ratio
                 
                 if (shibaRect.right > itemRect.left + (itemRect.width * collisionOverlapFactor) &&
                     shibaRect.left < itemRect.right - (itemRect.width * collisionOverlapFactor) &&
@@ -1512,19 +1483,14 @@
 
         function checkItemPassage() {
             document.querySelectorAll('.obstacle, .power-up, .toy-item').forEach(item => {
-                // Get the current computed left position of the item in the game-world's coordinate space
-                // (before game-world's overall scale transform is applied, if that's how you're thinking of it)
-                const itemRect = item.getBoundingClientRect(); // This gives position relative to viewport
-                const gameWorldRect = elements.gameWorld.getBoundingClientRect();
+                const itemRect = item.getBoundingClientRect();
+                const gameWorldRect = elements.gameWorld.getBoundingClientRect(); // Get game-world's viewport rect
 
                 // Calculate item's right edge relative to the game-world's left edge
-                // This gives us its "true" position within the *scaled* game world
                 const itemRightInGameWorld = itemRect.right - gameWorldRect.left;
 
-                // We want to remove it when it's completely past the left edge of the scaled game world.
-                // The 'to { left: -100px; }' in CSS means it goes 100px off the base game width.
-                // So, in the scaled world, it should be removed when its right edge is past -100px * scale.
-                const removalThreshold = -100 * state.gameScale; 
+                // Threshold is the width of the item, since the CSS animation takes it to `calc(0% - var(--obstacle-size))`
+                const removalThreshold = 0 - (item.offsetWidth); // item's own width is fine here.
                 
                 if (itemRightInGameWorld < removalThreshold && item.parentNode) {
                     if (item.classList.contains('obstacle') && item.dataset.passed === 'false' && !item.hasAttribute('data-collided')) {
@@ -1532,7 +1498,7 @@
                         item.dataset.passed = 'true'; 
                     } else if ((item.classList.contains('toy-item') || item.classList.contains('power-up')) && !item.hasAttribute('data-collected')) {
                         if (item.classList.contains('toy-item')) {
-                            state.toysCollectedInStreak = 0;
+                            state.toysCollectedInStreak = 0; // If you miss a toy, streak breaks
                         }
                     }
                     item.remove(); 
@@ -1554,22 +1520,21 @@
         
         function createPoofEffect() {
             const shibaRect = elements.shiba.getBoundingClientRect();
-            const gameWorldRect = elements.gameWorld.getBoundingClientRect(); // Position relative to game world
+            const gameWorldRect = elements.gameWorld.getBoundingClientRect(); 
             
             for (let i = 0; i < 15; i++) {
                 const p = document.createElement('div');
                 p.textContent = '🐕';
                 p.classList.add('particle');
                 
-                // Position particles relative to the game-world's origin
-                // Calculate shiba's center relative to game-world's top-left corner
+                // Position particles relative to the game-world's top-left corner
                 const shibaCenterGameX = shibaRect.left - gameWorldRect.left + shibaRect.width / 2;
                 const shibaCenterGameY = shibaRect.top - gameWorldRect.top + shibaRect.height / 2;
 
                 p.style.top = `${shibaCenterGameY}px`;
                 p.style.left = `${shibaCenterGameX}px`;
                 
-                // Randomize particle movement relative to shiba's scaled size
+                // Randomize particle movement relative to scaled shiba size
                 const randomX = (Math.random() * 60 - 30) * state.gameScale;
                 const randomY = (Math.random() * 60 - 30) * state.gameScale;
                 p.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) translateX(${randomX}px) translateY(${randomY}px)`;
@@ -1634,7 +1599,12 @@
             clearInterval(state.snowInterval);
             clearInterval(state.starInterval);
 
-            document.querySelectorAll('.obstacle, .power-up, .toy-item, .special-effect-bubble, .raindrop, .leaf, .dust-particle, .snowflake, .star, .confetti, .fire-confetti, .xp-gain-text, .particle').forEach(el => el.remove());
+            // Ensure all items are removed from game-world
+            document.querySelectorAll('#game-world > .obstacle, #game-world > .power-up, #game-world > .toy-item, #game-world > .special-effect-bubble, #game-world > .raindrop, #game-world > .leaf, #game-world > .dust-particle, #game-world > .snowflake, #game-world > .star, #game-world > .confetti, #game-world > .fire-confetti, #game-world > .xp-gain-text, #game-world > .particle').forEach(el => el.remove());
+            
+            // xp-gain-text might be appended to gameContainer, so clean that too.
+            document.querySelectorAll('#game-container > .xp-gain-text').forEach(el => el.remove());
+
 
             elements.ground.style.animationPlayState = 'paused';
             elements.clouds.style.animationPlayState = 'paused';
